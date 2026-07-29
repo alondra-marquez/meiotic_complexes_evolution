@@ -5,14 +5,16 @@ author:
   - name: "Alondra Márquez"
   - name: "Brenda Gómez"
 lang: es
+output-file: index.html
+
 format:
   html:
     toc: true
     toc-title: "Contenido"
-    toc-location: right
+    toc-location: left
     toc-depth: 2
-    toc-expand: true
     number-sections: false
+    embed-resources: true
 ---
 
 En el presente documento se describe la organización propuesta de los módulos que se llevarán a cabo para cumplir con los objetivos del proyecto.
