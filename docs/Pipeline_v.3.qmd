@@ -3,7 +3,7 @@ title: "Evolución comparativa de complejos meióticos en plantas y hongos"
 subtitle: "Estrategia metodológica"
 author:
   - name: "Alondra Márquez"
-  - name: "Brenda Gómez"
+  - name: "Brenda Ochoa"
 lang: es
 output-file: index.html
 
@@ -27,7 +27,7 @@ Estas modificaciones buscan establecer una estrategia más robusta, coherente co
 
 Los avances del proyecto, los scripts desarrollados y los archivos necesarios para reproducir los análisis se actualizarán en el siguiente repositorio:
 
-[enlace al repositorio]()
+[enlace al repositorio](https://github.com/alondra-marquez/meiotic_complexes_evolution)
 
 # MÓDULO 1. Revisión inicial del conjunto de proteínas
 
@@ -484,7 +484,7 @@ El árbol y el alineamiento deberán contener exactamente los mismos identificad
 
 ## Resultados esperados del Módulo 4
 
-Para cada familia se conservara yse espera generar lo sigueinte: 
+Para cada familia se conservara y se espera generar lo siguiente: 
 
 - alineamiento codónico completo
 - alineamiento codónico conservador
@@ -938,7 +938,7 @@ Para poder hacer los analisis consecuentes es importante que para este punto rev
 - que no se mantengan símbolos especiales de MACSE
 - que los encabezados sean únicos
 - que no existan secuencias idénticas duplicadas
-- que el haya variación suficiente para estimar sustituciones
+- que haya variación suficiente para estimar sustituciones
 - que las secuencias y las puntas del árbol coincidan
 
 Acorde a la referencia no existe un número universal de secuencias que garantice suficiente potencia para todos los modelos. La capacidad de detectar selección también depende de la longitud del gen, la divergencia, el número de sustituciones y la distribución de las ramas. Los conjuntos con pocas secuencias cercanas pueden no contener suficiente información para identificar sitios bajo selección.
@@ -961,7 +961,7 @@ Esta clasificación tendra que estar basada en las métricas obtenidas en el Mó
 
 ## 6.2 Evaluación de recombinación con GARD
 
-Antes de realizar las pruebas principales de selección evaluaremos evaluaremos si un único árbol describe adecuadamente todo el alineamiento o si existen regiones compatibles con historias filogenéticas diferentes.
+Antes de realizar las pruebas principales de selección evaluaremos si un único árbol describe adecuadamente todo el alineamiento o si existen regiones compatibles con historias filogenéticas diferentes.
 
 Para ello utilizaremos GARD, disponible en HyPhy (Hypothesis Testing using Phylogenies) que es un software de codigo abierto usado para el analisis de secuencias geneticas. 
 
@@ -1121,14 +1121,13 @@ Referencia:
 Dependiendo del resultado, lo interpretaremos de la siguiente manera:
 
 - resultado significativo: existe evidencia de selección diversificante en al menos un sitio y una rama del conjunto evaluado.
-- resultado no significativo: indica que no encontramos evidencia suficiente
 - resultado no significativo: demuestra que el gen nunca estuvo bajo selección positiva
 
 BUSTED puede tener poca potencia cuando existe muy poca divergencia o cuando la señal se limita a pocos cambios. Tambien los errores de alineamiento o los cambios múltiples dentro de un codón pueden producir señales incorrectas. 
 
 ### BUSTED+MSS
 
-Otro punto relevante a considerar es que HyPhy incorporó este año una variante de BUSTED que permite modelar distintas clases de tasas sinónimas, reduciendp falsos positivos producidos cuando la tasa sinónima no es constante entre posiciones. 
+Otro punto relevante a considerar es que HyPhy incorporó este año una variante de BUSTED que permite modelar distintas clases de tasas sinónimas, reduciendo falsos positivos producidos cuando la tasa sinónima no es constante entre posiciones. 
 
 Sin embargo, el artículo correspondiente a la actualizacion esta en pre-print, por lo que se tendra que evaluar si  utilizaremos BUSTED estándar como análisis principal o si  podremos aplicar BUSTED+MSS
 
@@ -1699,7 +1698,7 @@ Las comparaciones entre complejos deberán mostrar los resultados individuales d
 
 Cuando varias subfamilias procedan de un mismo gen original, registraremos esta relación y no asumiremos automáticamente que representan observaciones completamente independientes.
 
-Es importante que antes de hacer la interpretacion de un complejo revisemos cuántos genes contiene, qué especies incluye cada familia, si los conjuntos taxonómicos son comparables, ué longitud tienen los alineamientos y cuántos genes llegaron hasta los modelos codónicos.
+Es importante que antes de hacer la interpretacion de un complejo revisemos cuántos genes contiene, qué especies incluye cada familia, si los conjuntos taxonómicos son comparables, qué longitud tienen los alineamientos y cuántos genes llegaron hasta los modelos codónicos.
 
 En los complejos que contienen un solo gen, el resultado representará únicamente a ese gen, es decir, no podremos considerarlo una tendencia general del complejo.
 
@@ -1707,14 +1706,14 @@ En los complejos que contienen un solo gen, el resultado representará únicamen
 
 Una familia analizada en angiospermas no debe compararse directamente con otra que incluya plantas, algas y hongos sin registrar esa diferencia.
 
-Para esta parte se podran presentar dos niviles distintos de análisis:
+Para esta parte se podran presentar dos niveles distintos de análisis:
 
 - resumen descriptivo con el conjunto taxonómico final de cada familia
 - comparación de sensibilidad utilizando un subconjunto común de especies (nos ayudara a distinguir si una diferencia entre genes depende del muestreo taxonomico)
 
 Se podra generar un PCA para observar si los genes que tengan perfiles similares ocupan regiones cercanas en un espacio variado; el agrupamiento que observemos por complejo podra servir para visualizar si los complejos tienen tasas evolutivas distintas, evidenemente esto sera solo un análisis exploratorio (Para este punto tendremos que estandarizar variables porque la mayoria tiene escalas distintas y también retirar variables que sean redundantes)
 
-## 8.4 Generación de figuras y tablas finales (REVISIÓN: AUN NO ESTOY SEGURA DE CUALES SERIAN LAS MEJORES OPCIONES PARA PRESENTAR LOS RESULTADOS)
+## 8.3 Generación de figuras y tablas finales (REVISIÓN: AUN NO ESTOY SEGURA DE CUALES SERIAN LAS MEJORES OPCIONES PARA PRESENTAR LOS RESULTADOS)
 
 Las figuras que se generen deberán responder preguntas concretas y no repetir la misma información con distintos formatos, para el proyecto proponemos los siguientes tipos principales de figuras: 
 

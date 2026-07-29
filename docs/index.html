@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 <meta name="author" content="Alondra Márquez">
-<meta name="author" content="Brenda Gómez">
+<meta name="author" content="Brenda Ochoa">
 
 <title>Evolución comparativa de complejos meióticos en plantas y hongos</title>
 <style>
@@ -2412,7 +2412,7 @@ window.Quarto = {
   <ul class="collapse">
   <li><a href="#integración-de-resultados-por-gen" id="toc-integración-de-resultados-por-gen" class="nav-link" data-scroll-target="#integración-de-resultados-por-gen">8.1 Integración de resultados por gen</a></li>
   <li><a href="#comparación-entre-genes-y-complejos" id="toc-comparación-entre-genes-y-complejos" class="nav-link" data-scroll-target="#comparación-entre-genes-y-complejos">8.2 Comparación entre genes y complejos</a></li>
-  <li><a href="#generación-de-figuras-y-tablas-finales-revisión-aun-no-estoy-segura-de-cuales-serian-las-mejores-opciones-para-presentar-los-resultados" id="toc-generación-de-figuras-y-tablas-finales-revisión-aun-no-estoy-segura-de-cuales-serian-las-mejores-opciones-para-presentar-los-resultados" class="nav-link" data-scroll-target="#generación-de-figuras-y-tablas-finales-revisión-aun-no-estoy-segura-de-cuales-serian-las-mejores-opciones-para-presentar-los-resultados">8.4 Generación de figuras y tablas finales (REVISIÓN: AUN NO ESTOY SEGURA DE CUALES SERIAN LAS MEJORES OPCIONES PARA PRESENTAR LOS RESULTADOS)</a></li>
+  <li><a href="#generación-de-figuras-y-tablas-finales-revisión-aun-no-estoy-segura-de-cuales-serian-las-mejores-opciones-para-presentar-los-resultados" id="toc-generación-de-figuras-y-tablas-finales-revisión-aun-no-estoy-segura-de-cuales-serian-las-mejores-opciones-para-presentar-los-resultados" class="nav-link" data-scroll-target="#generación-de-figuras-y-tablas-finales-revisión-aun-no-estoy-segura-de-cuales-serian-las-mejores-opciones-para-presentar-los-resultados">8.3 Generación de figuras y tablas finales (REVISIÓN: AUN NO ESTOY SEGURA DE CUALES SERIAN LAS MEJORES OPCIONES PARA PRESENTAR LOS RESULTADOS)</a></li>
   </ul></li>
   </ul>
 </nav>
@@ -2433,7 +2433,7 @@ window.Quarto = {
     <div class="quarto-title-meta-heading">Autores/as</div>
     <div class="quarto-title-meta-contents">
              <p>Alondra Márquez </p>
-             <p>Brenda Gómez </p>
+             <p>Brenda Ochoa </p>
           </div>
   </div>
     
@@ -2453,7 +2453,7 @@ window.Quarto = {
 </blockquote>
 <p>Estas modificaciones buscan establecer una estrategia más robusta, coherente con la información con la que contamos y apoyada en herramientas y métodos más actuales.</p>
 <p>Los avances del proyecto, los scripts desarrollados y los archivos necesarios para reproducir los análisis se actualizarán en el siguiente repositorio:</p>
-<p><a href>enlace al repositorio</a></p>
+<p><a href="https://github.com/alondra-marquez/meiotic_complexes_evolution">enlace al repositorio</a></p>
 <section id="módulo-1.-revisión-inicial-del-conjunto-de-proteínas" class="level1">
 <h1>MÓDULO 1. Revisión inicial del conjunto de proteínas</h1>
 <p>En este módulo buscamos entender cómo se construyó el conjunto de proteínas que recibimos y preparar los datos para los análisis filogenéticos del siguiente módulo.</p>
@@ -2766,7 +2766,7 @@ window.Quarto = {
 </section>
 <section id="resultados-esperados-del-módulo-4" class="level2">
 <h2 class="anchored" data-anchor-id="resultados-esperados-del-módulo-4">Resultados esperados del Módulo 4</h2>
-<p>Para cada familia se conservara yse espera generar lo sigueinte:</p>
+<p>Para cada familia se conservara y se espera generar lo siguiente:</p>
 <ul>
 <li>alineamiento codónico completo</li>
 <li>alineamiento codónico conservador</li>
@@ -3059,7 +3059,7 @@ V_{j}^{(w)} = 1 - C_{j}^{(w)}
 <li>que no se mantengan símbolos especiales de MACSE</li>
 <li>que los encabezados sean únicos</li>
 <li>que no existan secuencias idénticas duplicadas</li>
-<li>que el haya variación suficiente para estimar sustituciones</li>
+<li>que haya variación suficiente para estimar sustituciones</li>
 <li>que las secuencias y las puntas del árbol coincidan</li>
 </ul>
 <p>Acorde a la referencia no existe un número universal de secuencias que garantice suficiente potencia para todos los modelos. La capacidad de detectar selección también depende de la longitud del gen, la divergencia, el número de sustituciones y la distribución de las ramas. Los conjuntos con pocas secuencias cercanas pueden no contener suficiente información para identificar sitios bajo selección.</p>
@@ -3080,7 +3080,7 @@ V_{j}^{(w)} = 1 - C_{j}^{(w)}
 </section>
 <section id="evaluación-de-recombinación-con-gard" class="level2">
 <h2 class="anchored" data-anchor-id="evaluación-de-recombinación-con-gard">6.2 Evaluación de recombinación con GARD</h2>
-<p>Antes de realizar las pruebas principales de selección evaluaremos evaluaremos si un único árbol describe adecuadamente todo el alineamiento o si existen regiones compatibles con historias filogenéticas diferentes.</p>
+<p>Antes de realizar las pruebas principales de selección evaluaremos si un único árbol describe adecuadamente todo el alineamiento o si existen regiones compatibles con historias filogenéticas diferentes.</p>
 <p>Para ello utilizaremos GARD, disponible en HyPhy (Hypothesis Testing using Phylogenies) que es un software de codigo abierto usado para el analisis de secuencias geneticas.</p>
 <p>GARD busca puntos del alineamiento donde cambia la topología o el patrón filogenético que explica mejor las secuencias usando un algoritmo genético y compara modelos con diferentes posiciones de ruptura. Cuando encuentra un cambio genera segmentos con árboles filogenéticos propios.</p>
 <p>Referencia:</p>
@@ -3186,13 +3186,12 @@ V_{j}^{(w)} = 1 - C_{j}^{(w)}
 <p>Dependiendo del resultado, lo interpretaremos de la siguiente manera:</p>
 <ul>
 <li>resultado significativo: existe evidencia de selección diversificante en al menos un sitio y una rama del conjunto evaluado.</li>
-<li>resultado no significativo: indica que no encontramos evidencia suficiente</li>
 <li>resultado no significativo: demuestra que el gen nunca estuvo bajo selección positiva</li>
 </ul>
 <p>BUSTED puede tener poca potencia cuando existe muy poca divergencia o cuando la señal se limita a pocos cambios. Tambien los errores de alineamiento o los cambios múltiples dentro de un codón pueden producir señales incorrectas.</p>
 <section id="bustedmss" class="level3">
 <h3 class="anchored" data-anchor-id="bustedmss">BUSTED+MSS</h3>
-<p>Otro punto relevante a considerar es que HyPhy incorporó este año una variante de BUSTED que permite modelar distintas clases de tasas sinónimas, reduciendp falsos positivos producidos cuando la tasa sinónima no es constante entre posiciones.</p>
+<p>Otro punto relevante a considerar es que HyPhy incorporó este año una variante de BUSTED que permite modelar distintas clases de tasas sinónimas, reduciendo falsos positivos producidos cuando la tasa sinónima no es constante entre posiciones.</p>
 <p>Sin embargo, el artículo correspondiente a la actualizacion esta en pre-print, por lo que se tendra que evaluar si utilizaremos BUSTED estándar como análisis principal o si podremos aplicar BUSTED+MSS</p>
 <p>Revisar: Consideración sobre variación en las tasas sinónimas</p>
 <p>Tras revision, consideramos que BUSTED estándar funciona mejor como la prueba principal de este módulo. La opción MSS, que permite modelar varias clases de tasas sinónimas, se reservará para el Módulo 7 como análisis de sensibilidad en genes prioritarios o resultados potencialmente afectados por variación sinónima.</p>
@@ -3598,12 +3597,12 @@ V_{j}^{(w)} = 1 - C_{j}^{(w)}
 <p>Para cada gen podremos utilizar las métricas calculadas previamente: identidad proteica mediana, distancia patrística mediana, proporción de sitios variables, variabilidad aminoacídica mediana, ω de M0, resultado de BUSTED, resultado de los modelos de sitios, número de sitios robustos, número de ramas con evidencia, clasificación final.</p>
 <p>Las comparaciones entre complejos deberán mostrar los resultados individuales de cada gen. También podremos presentar medianas e intervalos intercuartílicos cuando un complejo contenga suficientes genes.</p>
 <p>Cuando varias subfamilias procedan de un mismo gen original, registraremos esta relación y no asumiremos automáticamente que representan observaciones completamente independientes.</p>
-<p>Es importante que antes de hacer la interpretacion de un complejo revisemos cuántos genes contiene, qué especies incluye cada familia, si los conjuntos taxonómicos son comparables, ué longitud tienen los alineamientos y cuántos genes llegaron hasta los modelos codónicos.</p>
+<p>Es importante que antes de hacer la interpretacion de un complejo revisemos cuántos genes contiene, qué especies incluye cada familia, si los conjuntos taxonómicos son comparables, qué longitud tienen los alineamientos y cuántos genes llegaron hasta los modelos codónicos.</p>
 <p>En los complejos que contienen un solo gen, el resultado representará únicamente a ese gen, es decir, no podremos considerarlo una tendencia general del complejo.</p>
 <section id="comparación-taxonómica" class="level3">
 <h3 class="anchored" data-anchor-id="comparación-taxonómica">Comparación taxonómica</h3>
 <p>Una familia analizada en angiospermas no debe compararse directamente con otra que incluya plantas, algas y hongos sin registrar esa diferencia.</p>
-<p>Para esta parte se podran presentar dos niviles distintos de análisis:</p>
+<p>Para esta parte se podran presentar dos niveles distintos de análisis:</p>
 <ul>
 <li>resumen descriptivo con el conjunto taxonómico final de cada familia</li>
 <li>comparación de sensibilidad utilizando un subconjunto común de especies (nos ayudara a distinguir si una diferencia entre genes depende del muestreo taxonomico)</li>
@@ -3612,7 +3611,7 @@ V_{j}^{(w)} = 1 - C_{j}^{(w)}
 </section>
 </section>
 <section id="generación-de-figuras-y-tablas-finales-revisión-aun-no-estoy-segura-de-cuales-serian-las-mejores-opciones-para-presentar-los-resultados" class="level2">
-<h2 class="anchored" data-anchor-id="generación-de-figuras-y-tablas-finales-revisión-aun-no-estoy-segura-de-cuales-serian-las-mejores-opciones-para-presentar-los-resultados">8.4 Generación de figuras y tablas finales (REVISIÓN: AUN NO ESTOY SEGURA DE CUALES SERIAN LAS MEJORES OPCIONES PARA PRESENTAR LOS RESULTADOS)</h2>
+<h2 class="anchored" data-anchor-id="generación-de-figuras-y-tablas-finales-revisión-aun-no-estoy-segura-de-cuales-serian-las-mejores-opciones-para-presentar-los-resultados">8.3 Generación de figuras y tablas finales (REVISIÓN: AUN NO ESTOY SEGURA DE CUALES SERIAN LAS MEJORES OPCIONES PARA PRESENTAR LOS RESULTADOS)</h2>
 <p>Las figuras que se generen deberán responder preguntas concretas y no repetir la misma información con distintos formatos, para el proyecto proponemos los siguientes tipos principales de figuras:</p>
 <ol type="1">
 <li>Figura 1. Resumen del pipeline y conjuntos analizados</li>
