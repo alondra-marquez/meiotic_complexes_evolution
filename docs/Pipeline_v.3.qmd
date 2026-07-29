@@ -1,0 +1,1751 @@
+---
+title: "PROYECTO:"
+subtitle: "PIPELINE GENERAL"
+lang: es
+format:
+  html:
+    toc: true
+    toc-depth: 2
+    number-sections: false
+---
+
+En el presente documento se describe la organización propuesta de los módulos que se llevarán a cabo para cumplir con los objetivos del proyecto.
+
+Como referencia principal se consideraron los análisis y las herramientas utilizados en el artículo titulado *"Molecular evolution of the meiotic recombination pathway in mammals"*, en el cual se llevan a cabo análisis filogenéticos para la selección de un panel de genes para la reconstrucción de la evolución del pathway de recombinación en mamíferos placentarios y para identificar componentes del pathway que probablemente contribuyan a la divergencia entre especies. Sin embargo, debido a las características de los datos disponibles y a los resultados que se esperan obtener, fue necesario realizar algunas modificaciones.
+
+> Amy L. Dapper, Bret A. Payseur, *Molecular evolution of the meiotic recombination pathway in mammals*, Evolution, Volume 73, Issue 12, 1 December 2019, Pages 2368–2389,[https://doi.org/10.1111/evo.13850](https://doi.org/10.1111/evo.13850)
+
+Estas modificaciones buscan establecer una estrategia más robusta, coherente con la información con la que contamos y apoyada en herramientas y métodos más actuales.
+
+Los avances del proyecto, los scripts desarrollados y los archivos necesarios para reproducir los análisis se actualizarán en el siguiente repositorio:
+
+[enlace al repositorio]()
+
+# MÓDULO 1. Revisión inicial del conjunto de proteínas
+
+En este módulo buscamos entender cómo se construyó el conjunto de proteínas que recibimos y preparar los datos para los análisis filogenéticos del siguiente módulo.
+
+Para este punto contamos con tres tipos de información:
+
+- Una matriz de homólogos dividida en ocho tablas, una por complejo meiótico. Contiene los candidatos encontrados y muestra posibles isoformas o copias génicas
+- Un archivo -Domain.txt para cada gen o familia, con las secuencias aminoacídicas seleccionadas. Parecen contener una selección posterior de esos candidatos
+- Una figura filogenética construida con la región 18S.
+
+Por ahora no contamos localmente con CDS, genomas completos, proteomas, archivos GFF/GTF ni el árbol 18S en formato Newick.
+
+Las asignaciones de homología incluidas en las tablas se utilizarán como punto de partida, de acuerdo con la revisión previa realizada. No repetiremos la búsqueda general de homólogos. Nos centraremos en reconstruir la selección recibida, identificar posibles isoformas y copias génicas, revisar la calidad de los archivos y preparar los conjuntos proteicos que pasarán al Módulo 2. (Esto como primer acercamiento, sin embargo si se solicita revisar la veracidad de los homólogos, se tendrá que proponer un pipeline alternativo)
+
+## 1.1 Revisión y origen de los datos
+
+Primero organizaremos todos los archivos recibidos y definiremos qué información contiene cada uno.
+
+Para la matriz registraremos los ocho complejos, los 51 genes, las 27 especies, los identificadores anotados, las posibles isoformas y copias, el estado reportado en cada celda y las observaciones del archivo original.
+
+Para los archivos -Domain.txt registraremos el nombre del archivo, el gen o familia, el número de secuencias, el número de especies, los identificadores incluidos, la longitud de cada secuencia y la estructura de los encabezados.
+
+También será importante confirmar cómo se generaron estos archivos. Para cada archivo determinaremos, cuando sea posible, si las secuencias corresponden a proteínas completas, proteínas parciales o regiones recortadas alrededor de un dominio, qué herramienta se utilizaron, cómo se eligieron las secuencias cuando existían varias isoformas y si se excluyeron candidatos de la matriz, esta información se registrará en la tabla de seguimiento.
+
+Esta información permitirá entender los criterios que se usaron en la selección original y evitar repetir análisis que ya se realizaron.
+
+## 1.2 Comparación entre la matriz y los archivos de proteínas
+
+Después compararemos cada secuencia de los archivos -Domain.txt con la matriz de homólogos.
+
+Para cada registro indicaremos si aparece en la matriz, en qué complejo y gen está anotado, a qué especie pertenece, si era el único modelo disponible, si se eligió entre varias isoformas y si corresponde a uno de varios loci.
+
+También identificaremos modelos presentes en la matriz que no aparecen en los archivos FASTA y secuencias presentes en los FASTA que no aparecen en la matriz.
+
+En esta etapa no seleccionaremos nuevamente una isoforma automáticamente, primero intentaremos reconstruir qué modelo de la matriz se incluyó en el archivo y comprobar si podemos relacionarlo con un locus y un transcrito específicos.
+
+Cuando no sea posible conocer la justificación original, mantendremos la secuencia proporcionada y registraremos que el criterio de selección no está documentado.
+
+## 1.3 Revisión del formato y calidad  de las secuencias
+
+Revisaremos la estructura y la calidad general de todos los archivos FASTA.
+
+Los encabezados suelen tener un formato parecido a:
+
+```text
+>especie|identificador|longitud|gen
+```
+
+Sin embargo, algunos incluyen nombres alternativos, identificadores adicionales o no indican la longitud. Por esta razón conservaremos siempre el encabezado original y no asumiremos que todos tienen el mismo número de campos.
+
+Para cada secuencia revisaremos el identificador, la especie, el gen asignado, la longitud indicada en la matriz, la longitud indicada en el encabezado y la longitud real de la secuencia.
+
+También revisaremos caracteres aminoacídicos no válidos, caracteres * internos o terminales, identificadores o entradas repetidas, secuencias idénticas asociadas con diferentes identificadores, secuencias aparentemente incompletas y diferencias grandes de longitud dentro de una misma familia.
+
+En algunos archivos aparecen diferencias de uno o pocos aminoácidos entre la longitud indicada y la longitud real. Estas diferencias pueden deberse a errores de conteo, cambios entre versiones o a la presencia de caracteres terminales, cada caso deberá revisarse.
+
+Las proteínas mucho más largas o más cortas que el resto requerirán una revisión de su anotación y de los dominios que contienen. No excluiremos una secuencia únicamente por su longitud.
+
+## 1.4 Revisión de los conjuntos y casos que requieren aclaración
+
+Las familias indicadas en las tablas se utilizarán como punto de partida para los análisis. Esto para evitar repetir la clasificación de homología que ya se hizo previamente
+
+Solo realizaremos una revisión más detallada cuando aparezca una inconsistencia concreta, por ejemplo cuando una proteína no pueda alinearse con el resto, presente una arquitectura muy diferente, tenga una anotación dudosa o parezca corresponder a otro componente del complejo.
+
+Esta situación puede presentarse en MTOPVI. En plantas aparecen proteínas anotadas como MTOPVIB, mientras que en levaduras se incluyen componentes como SKI8, REC102, REC104, Rec6 y Rec14. Aunque la tabla se considere correcta desde el punto de vista funcional, será necesario aclarar si estas proteínas deben entrar en un mismo alineamiento o si representan componentes diferentes que deben analizarse por separado.
+
+Cuando la anotación o las referencias indiquen que un archivo podría contener componentes funcionalmente relacionados, pero no necesariamente homólogos, marcaremos el conjunto para revisión. 
+
+Podremos preparar subconjuntos provisionales, pero la decisión final de analizarlos juntos o por separado se tomará en el Módulo 2 después de revisar los alineamientos y los árboles génicos.
+
+Esta decisión solo se tomará cuando exista evidencia suficiente en la anotación, las referencias, el alineamiento o el árbol.
+
+
+## 1.5 Revisión de isoformas y copias génicas
+
+Después revisaremos las secuencias que pertenecen a una misma especie.
+
+Intentaremos distinguir isoformas del mismo locus, copias localizadas en loci diferentes, entradas duplicadas y candidatos cuya relación todavía no pueda determinarse.
+
+Para los análisis principales buscaremos conservar una isoforma representativa por locus, pero mantendremos las copias génicas verdaderas.
+
+Cuando el archivo -Domain.txt contenga una sola isoforma de un locus mantendremos inicialmente esa selección, no la reemplazaremos solo porque exista una isoforma más larga o una anotación más reciente.
+
+Cuando sea necesario, consultaremos la anotación original para comprobar el locus, el transcrito, el identificador proteico y la relación entre los diferentes modelos.
+
+Daremos prioridad a la secuencia proporcionada previamente, siempre que pueda relacionarse con un locus y un transcrito concretos y no presente problemas evidentes de anotación o calidad. También consideraremos la condición de transcrito principal o representativo, la completitud del modelo y la conservación de los dominios esperados. La longitud se utilizará solamente como criterio secundario.
+
+La selección se considerará provisional hasta comprobar en el Módulo 3 que existe un CDS correspondiente y que su traducción coincide con la proteína seleccionada
+
+Si el archivo contiene varias isoformas del mismo locus y no podemos determinar cuál debe representar al gen, conservaremos temporalmente los candidatos para revisarlos mediante el alineamiento y el árbol del Módulo 2.
+
+Si dos isoformas continúan siendo igualmente válidas después del Módulo 2, ambas podrán pasar al Módulo 3 como candidatas para recuperar y comparar sus CDS. Solo una se conservará como representante principal del locus en los alineamientos codónicos.
+
+Cuando las secuencias correspondan a loci diferentes, las conservaremos como posibles copias génicas. No eliminaremos una copia únicamente para mantener una sola secuencia por especie.
+
+
+## 1.6 Preparación de los conjuntos proteicos 
+
+Al final del módulo prepararemos un archivo FASTA para cada familia o conjunto de secuencias.
+
+Cada archivo incluirá las proteínas que pasaron la revisión, las posibles copias génicas y, cuando sea necesario, las isoformas que todavía requieran compararse en el módulo 2. 
+
+Podremos añadir proteínas de referencia caracterizadas o parálogos conocidos cuando sean necesarios para interpretar un caso concreto. 
+
+Estas referencias se identificarán claramente y no pasarán automáticamente a la recuperación de CDS ni a los cálculos evolutivos.
+
+La figura basada en 18S servirá para ordenar las especies y reconocer los principales grupos taxonómicos. Sin embargo, no la utilizaremos como prueba directa de ortología.
+
+**Para los análisis posteriores sería conveniente solicitar el árbol 18S en formato Newick, los nombres exactos de las puntas, el alineamiento utilizado, el método de construcción, el modelo evolutivo y los soportes de las ramas.**
+
+## Resultados esperados del Módulo 1: 
+
+El resultado principal será una tabla con una fila por secuencia recibida. Esta tabla incluirá el complejo, el archivo, el gen o familia, la especie, el encabezado original, el identificador, las longitudes registradas, la relación con la matriz, el locus, el transcrito, la condición de isoforma o copia, el estado de calidad básica y la decisión del módulo 
+
+La decisión podrá resumirse en los siguientes estados:
+
+- incluida: coincide con la matriz y puede pasar al alineamiento  
+- copia génica conservada: corresponde a un locus diferente y se mantendrá
+- Isoforma proporcionada: corresponde a la selección previa pero el criterio original no esta documentado
+- Isoforma pendiente: existen varios modelos del mismo locus y todavía no se ha elegido uno 
+- Pendiente revisión: Hay inconsistencias en el identificador, longitud, secuencia o anotación
+- Eliminada: Entrada duplicada o error comprobado  
+
+También obtendremos un archivo FASTA para cada familia o conjunto de candidatos.
+
+El módulo terminará cuando podamos relacionar cada proteína recibida con la matriz, determinar qué representa su identificador, establecer si corresponde a una isoforma, una copia génica o un caso no resuelto, y preparar los conjuntos que pasarán al alineamiento proteico.
+
+# MÓDULO 2. Alineamientos proteicos y filogenias génicas
+
+En este módulo analizaremos los conjuntos de proteínas preparados en el Módulo 1.
+
+El objetivo será generar los alineamientos proteicos y los árboles génicos necesarios para los análisis posteriores. También revisaremos la relación entre isoformas, copias génicas y posibles parálogos. 
+
+Solo modificaremos un conjunto cuando encontremos una inconsistencia concreta en la anotación, el alineamiento o el árbol.
+
+Estos análisis nos permitirán definir qué proteínas conservaremos para recuperar sus CDS en el Módulo 3.
+
+Los árboles construidos en este módulo funcionarán como árboles de revisión para interpretar las relaciones entre las proteínas y definir el conjunto que pasará a la recuperación de CDS. Después de validar los CDS y obtener los alineamientos codónicos del Módulo 4, comprobaremos si es necesario podar o reconstruir el árbol final utilizado en los modelos de selección.
+
+## 2.1 Preparación de los conjuntos proteicos
+
+La entrada de este módulo serán los archivos FASTA generados en el Módulo 1.
+
+Antes de realizar los alineamientos revisaremos que cada secuencia tenga un encabezado único que permita reconocer la especie, el identificador proteico y la familia.
+
+Las proteínas recibidas formarán el conjunto principal del proyecto. Podremos añadir proteínas de referencia caracterizadas o parálogos conocidos cuando ayuden a interpretar un caso concreto. Conservaremos una tabla de correspondencia entre el encabezado original y el identificador simplificado utilizado en MAFFT, IQ-TREE y los módulos posteriores.
+
+Las referencias deberán identificarse claramente, no pasarán de manera automática a la recuperación de CDS ni a los cálculos evolutivos. Su función será ayudar a reconocer clados, copias o posibles problemas de clasificación.
+
+Esto será útil en conjuntos como MTOPVI. En este caso necesitaremos aclarar si las proteínas de plantas y los componentes de levaduras pueden compararse dentro de un mismo alineamiento o si representan componentes diferentes que deben analizarse por separado.
+
+No eliminaremos las posibles copias génicas. Conservaremos una secuencia por cada locus identificado y mantendremos temporalmente las isoformas que todavía necesiten revisión.
+
+## 2.2 Alineamiento proteico con MAFFT
+
+Utilizaremos MAFFT para generar un alineamiento aminoacídico para cada familia.
+
+El alineamiento permitirá comparar las proteínas, identificar regiones conservadas y reconocer secuencias que presenten problemas de cobertura o correspondencia.
+
+Durante la revisión nos centraremos en observar la longitud de las secuencias, la distribución de los gaps, las regiones terminales, las inserciones o deleciones largas y la conservación de dominios o motivos conocidos.
+
+Una secuencia no se excluirá únicamente porque sea más larga, tenga una inserción o presente varios gaps. Primero revisaremos si corresponde a una proteína completa, una región recortada, una isoforma diferente o un modelo parcial.
+
+Cuando una secuencia no pueda alinearse de forma confiable con las demás, revisaremos su anotación y los datos del Módulo 1, también comprobaremos si corresponde a otro componente, parálogo o grupo funcional.
+
+Solo dividiremos un conjunto cuando exista evidencia suficiente de que las secuencias no deben analizarse juntas. En este caso se generaran alineamientos separados.
+
+Para los conjuntos pequeños o con regiones divergentes podremos utilizar una estrategia iterativa de MAFFT.
+
+
+También podremos reutilizar los scripts del proyecto de ERFVIIs y PCOs para estandarizar encabezados, ejecutar MAFFT por lotes y organizar los alineamientos
+
+## 2.3 Construcción de árboles con IQ-TREE 3
+
+A partir de los alineamientos proteicos construiremos árboles de máxima verosimilitud con IQ-TREE 3.
+
+Utilizaremos ModelFinder para seleccionar el modelo de sustitución que mejor se ajuste a cada alineamiento. También calcularemos el soporte de las ramas mediante SH-aLRT y ultrafast bootstrap.
+
+El comando general será como el siguiente ejemplo: 
+
+```bash
+iqtree3 \
+  -s GENE.protein.aln.fasta \
+  -m MFP \
+  -B 1000 \
+  -alrt 1000 \
+  -T 6 \
+  -seed 12345 \
+  --prefix GENE
+```
+
+Este comando generará el árbol de máxima verosimilitud, el reporte del modelo seleccionado y el registro de la ejecución.
+
+Los primeros árboles se conservarán sin enraizar. No utilizaremos automáticamente la misma especie como outgroup para todas las familias.
+
+Solo enraizaremos un árbol cuando exista un grupo externo adecuado y biológicamente justificado. Cuando no encontremos un outgroup confiable, mantendremos el árbol no enraizado.
+
+También podremos reutilizar los scripts anteriores para ejecutar IQ-TREE en varios genes y generar archivos de anotación para iTOL.
+
+## 2.4 Revisión de las relaciones entre secuencias y casos problemáticos
+
+Después de construir los alineamientos y los árboles comprobaremos que las secuencias sean consistentes con la familia asignada.
+
+Nos centraremos en la revisión de la posición de las proteínas de referencia, las posibles copias génicas, los parálogos conocidos, las ramas muy largas, las secuencias parciales y los grupos con poco soporte.
+
+Una rama larga no será suficiente para excluir una proteína, primero revisaremos la cobertura del alineamiento, la longitud, los dominios, la anotación y la posibilidad de que el modelo esté incompleto.
+
+La presencia de dos secuencias de una misma especie tampoco implica que una deba eliminarse, si corresponden a loci diferentes, las conservaremos como copias génicas candidatas. La interpretación como duplicación se apoyará en la anotación del locus, la topología del árbol, la distribución de las copias entre especies y, cuando sea posible, la comparación con la filogenia de especies.
+
+Cuando varias secuencias correspondan a isoformas del mismo locus, seleccionaremos una isoforma representativa para los análisis posteriores. 
+
+La elección no se basará únicamente en la posición dentro del árbol, también tendremos que considerar los siguientes puntos:
+
+- correspondencia con la secuencia proporcionada
+- condición de transcrito principal o representativo
+- completitud del modelo
+- conservación de dominios
+- calidad del alineamiento
+- posibilidad de recuperar el CDS exacto en el Módulo 3
+
+Si dos isoformas continúan siendo igualmente válidas, registraremos el caso y podremos conservar temporalmente ambas hasta revisar sus CDS.
+
+La filogenia 18S ayudará a reconocer los principales grupos taxonómicos y a interpretar algunas duplicaciones, sin embargo, no la utilizaremos como prueba única de ortología.
+
+**Para realizar comparaciones más formales necesitaremos el árbol 18S en formato Newick y nombres de especies compatibles con los árboles génicos.**
+
+Es importante que no se espere que todos los árboles génicos coincidan exactamente con la filogenia 18S, ya que las diferencias pueden deberse a duplicaciones, pérdidas, tasas evolutivas distintas, bajo soporte o falta de resolución.
+
+## 2.5 Definición del conjunto seleccionado para recuperar CDS
+
+Después de revisar el alineamiento, el árbol y la anotación, definiremos el conjunto de proteínas que pasará al Módulo 3. En la mayoría de los casos seleccionaremos una proteína por locus. Cuando dos isoformas sigan siendo igualmente válidas, ambas podrán pasar temporalmente como candidatas para recuperar y comparar sus CDS.
+
+La selección definitiva de estas isoformas se realizará después de comprobar la correspondencia entre el CDS y la proteína en el Módulo 3. Solo una isoforma por locus pasará al alineamiento codónico principal, salvo que exista una justificación para analizar transcritos alternativos por separado.
+
+No será necesario que los 51 genes incluyan las mismas 27 especies, cada familia conservará las especies para las que exista una proteína identificable, un alineamiento confiable y una relación con el conjunto analizado.
+
+Podemos registrar las decisiones finales en estados como seleccionada, copia conservada, parálogo, revisión o exclusión. 
+
+## 2.6 Adaptación de scripts desarrollados previamente
+
+Para este módulo podremos reutilizar parte del código desarrollado en el proyecto de filogenias de ERFVIIs y PCOs.
+
+Se podran adaptar los scripts utilizados para organizar los archivos por familia, estandarizar los encabezados FASTA, ejecutar MAFFT e IQ-TREE sobre varios conjuntos de secuencias y preparar archivos de anotación para iTOL.
+
+También podemos conservar la estructura general de carpetas y el comando de IQ-TREE
+
+Los scripts reutilizables incluirían principalmente:
+
+- Normalización de encabezados
+- Ejecución de MAFFT por lotes
+- Control de los alineamientos: Podremos adaptar los scripts que cuentan secuencias, longitudes, gaps y nombres antes de ejecutar las filogenias.
+- Ejecución de IQ-TREE
+- Organización de resultados: estructura de carpetas para secuencias, alineamientos, resultados de IQ-TREE y figuras 
+- Preparación de anotaciones para iTOL
+
+# MÓDULO 3. Recuperación y validación de CDS
+
+En este módulo recuperaremos el CDS correspondiente a cada proteína seleccionada, copia génica o isoforma candidata que haya pasado desde el Módulo 2.
+
+Después traduciremos los CDS y comprobaremos que produzcan las mismas secuencias aminoacídicas que utilizamos en los alineamientos proteicos y las filogenias.
+
+No utilizaremos cualquier CDS asociado con el mismo gen. Buscaremos el modelo exacto que corresponda al locus, transcrito y proteína seleccionados.
+
+En este módulo trabajaremos con las proteínas seleccionadas al final del Módulo 2. También podrán entrar dos o más isoformas candidatas del mismo locus cuando no haya sido posible elegir una de ellas únicamente con la anotación, el alineamiento proteico y el árbol. En estos casos, la comparación entre el CDS, su traducción y la proteína permitirá tomar la decisión final.
+
+## 3.1 Descarga de CDS
+
+Para cada proteína seleccionada buscaremos primero el CDS en la misma base de datos, ensamblaje y versión de anotación de donde procede el identificador original. Esto aumentará la posibilidad de recuperar exactamente el modelo utilizado para generar la proteína recibida.
+
+Cuando sea posible, utilizaremos la base de datos y la versión del genoma indicadas en la matriz, ya que estas representan el origen de los identificadores originales.
+
+Daremos prioridad al CDS anotado directamente para el transcrito seleccionado. Solo reconstruiremos la secuencia desde el genoma y la anotación cuando la base de datos no proporcione un CDS descargable o cuando necesitemos verificar el modelo.
+
+Contamos con un código de descarga desde NCBI mediante Entrez, disponible en el repositorio local. Este código podrá utilizarse cuando la proteína tenga una accesión de NCBI o cuando exista una equivalencia clara entre el modelo original y el registro encontrado en NCBI.
+
+Para los identificadores de Phytozome, JGI, Ensembl u otras bases de datos, primero intentaremos recuperar el CDS desde la fuente original. Se buscará automatizar estas descargas mediante scripts
+
+Para cada secuencia registraremos la especie, el gen, el identificador de la proteína, el identificador del transcrito, la fuente de descarga, la versión del genoma o de la anotación, el CDS recuperado y la fecha de recuperación.
+
+Si no encontramos el modelo exacto en la fuente original, podremos buscarlo en NCBI u otra base de datos. En estos casos tendremos que comprobar que el CDS alternativo produzca la misma proteína seleccionada.
+
+No aceptaremos una equivalencia únicamente porque los registros tengan el mismo nombre de gen.
+
+Cuando reconstruyamos un CDS a partir del genoma y de un archivo GFF/GTF, utilizaremos únicamente los segmentos asociados con el transcrito seleccionado. Respetaremos la hebra, el orden de los segmentos y la fase anotada. También comprobaremos que los nombres de los cromosomas o scaffolds coincidan entre el archivo genómico y la anotación.
+
+
+## 3.2 Traducción de los CDS
+
+Traduciremos cada CDS utilizando el código genético correspondiente y comprobaremos que la secuencia sea compatible con el marco de lectura anotado. Para los genes nucleares utilizaremos el código genético estándar, salvo que la anotación indique una tabla de traducción diferente.
+
+Durante este paso verificaremos que la secuencia mantenga el marco de lectura y que no contenga codones de paro internos.
+
+También revisaremos si presenta codones ambiguos, si incluye codón de inicio y paro y si la secuencia parece completa o parcial.
+
+La ausencia de un codón de inicio o terminación no implicará automáticamente que debamos excluir el CDS. Primero revisaremos si la base de datos lo describe como un modelo parcial o incompleto.
+
+## 3.3 Comparación entre CDS y proteína
+
+Compararemos la traducción de cada CDS con la proteína o región proteica seleccionada en el Módulo 2. El criterio de comparación dependerá del tipo de secuencia registrado en el Módulo 1.
+
+La comparación podrá resumirse en tres resultados:
+
+- COINCIDE: la traducción y la proteína son iguales. También podremos incluir aquí los casos donde la única diferencia sea un carácter * terminal.
+- REVISIÓN: existen diferencias de longitud, aminoácidos, marco de lectura o una posible correspondencia con otra isoforma.
+- CDS_NO_RECUPERADO: no fue posible encontrar el CDS correspondiente.
+
+Cuando una secuencia quede marcada para revisión, comprobaremos si utilizamos la versión correcta del genoma, si recuperamos otro transcrito, si cambió la anotación o si la proteína original está incompleta.
+
+No reemplazaremos la proteína original por otra versión sin entender primero la causa de la diferencia.
+
+Cuando recuperemos varios CDS candidatos para el mismo locus, compararemos sus traducciones con las proteínas recibidas. Daremos prioridad al modelo cuya traducción coincida con la secuencia utilizada en el alineamiento proteico. Si más de un modelo continúa siendo válido, registraremos la ambigüedad y definiremos cuál se utilizará en el análisis principal y cuál se conservará para una posible evaluación de sensibilidad.
+
+
+## 3.4 Evaluación
+
+Toda la información generada en el módulo se registrará en una sola tabla de seguimiento.
+
+Esta tabla podrá continuar la información generada en el módulo anterior  e incluir el complejo, gen, especie, proteína seleccionada, locus, transcrito, fuente del CDS, versión de la anotación, longitud del CDS, longitud de la proteína traducida, resultado de la comparación, observaciones y decisión final.
+
+La decisión final podrá resumirse en tres estados:
+
+- APTO PARA ALINEAMIENTO CODÓNICO
+- REQUIERE REVISIÓN
+- EXCLUIDO O NO RESUELTO
+
+**Resultados esperados:**
+
+
+Al finalizar este módulo tendremos un archivo CDS validado para cada proteína que continuará en el proyecto, una tabla de correspondencia entre locus, transcrito, proteína y CDS, y un registro de las secuencias que no pudieron resolverse.
+
+También tendremos una lista definitiva de las proteínas y CDS que pasarán al Módulo 4. Para cada familia registraremos el número de proteínas seleccionadas en el Módulo 2, el número de CDS recuperados, el número de coincidencias completas, las correspondencias regionales, los casos pendientes y las exclusiones.
+
+Los árboles utilizados en los modelos codónicos deberán contener exactamente las mismas secuencias que los alineamientos finales.
+
+# MÓDULO 4. Alineamientos codónicos
+
+En este módulo realizaremos los alineamientos codónicos de los CDS validados en el Módulo 3.
+
+El objetivo será colocar en una misma columna los codones que corresponden a posiciones homólogas, sin perder el marco de lectura. Estos alineamientos servirán para calcular dN, dS, dN/dS y realizar las pruebas de selección.
+
+Cada familia se analizará por separado. Mantendremos la organización de familias, copias génicas y parálogos definida en el Módulo 2, pero utilizaremos únicamente los CDS que hayan superado la validación del Módulo 3. No mezclaremos familias diferentes, parálogos que deban analizarse por separado ni secuencias cuya relación entre CDS y proteína no haya podido resolverse.
+
+Antes de generar el alineamiento codónico comprobaremos qué región proteica se utilizó en los módulos anteriores. Si las secuencias corresponden a proteínas completas, utilizaremos sus CDS completos. Si representan dominios o regiones recortadas, extraeremos los codones correspondientes a esas regiones o reconstruiremos previamente el alineamiento proteico con las proteínas completas. 
+
+No mezclaremos CDS completos y regiones parciales dentro de un mismo conjunto sin establecer coordenadas homólogas comparables.
+
+
+
+## 4.1 Alineamiento principal con MACSE v2
+
+Usaremos MACSE v2 como herramienta principal para construir los alineamientos codónicos.
+
+MACSE trabaja directamente con secuencias codificantes y utiliza la información de su traducción para mejorar el alineamiento. MACSE puede identificar y representar cambios de marco y codones de paro, pero estos caracteres no se conservarán automáticamente en los alineamientos utilizados por CODEML o HyPhy. Cada caso deberá revisarse para determinar si corresponde a un error de recuperación, una fase incorrecta, una anotación parcial, un pseudogén o un posible problema del ensamblaje.
+
+
+Referencia:
+
+> Ranwez, V., Douzery, E. J. P., Cambon, C., Chantret, N., & Delsuc, F. (2018). MACSE v2: Toolkit for the Alignment of Coding Sequences Accounting for Frameshifts and Stop Codons. Molecular biology and evolution, 35(10), 2582–2584. https://doi.org/10.1093/molbev/msy159
+
+La entrada será el archivo con los CDS validados en el Módulo 3. Cada conjunto deberá contener secuencias de una misma familia homóloga, una isoforma representativa por locus y las copias génicas que se hayan decidido conservar.
+
+MACSE generará para cada familia un alineamiento de nucleótidos organizado por codones y su alineamiento aminoacídico correspondiente.
+
+Aunque MACSE puede manejar cambios de marco y codones de paro, no asumiremos que estos representan eventos evolutivos reales. 
+
+Como los CDS ya se revisaron en el Módulo 3, la aparición de estos problemas puede indicar una secuencia parcial, una anotación incorrecta, un CDS equivocado o una diferencia entre versiones.
+
+Cuando encontremos alguno de estos casos, regresaremos al Módulo 3 para revisar la secuencia antes de utilizarla en los análisis evolutivos.
+
+Después de ejecutar MACSE comprobaremos que todos los alineamientos mantengan longitudes múltiplos de tres, que los gaps aparezcan como codones completos, que no permanezcan caracteres especiales de MACSE y que los identificadores coincidan con la tabla de seguimiento.
+
+
+## 4.2 Revisión de la calidad del alineamiento
+
+Después de generar los alineamientos con MACSE, revisaremos si mantienen el marco de lectura y si las posiciones son comparables entre las secuencias.
+
+Consideraremos problemática una región cuando diferentes secuencias no compartan una correspondencia clara, cuando los gaps cambien de posición entre estrategias de alineamiento, cuando una secuencia se alinee principalmente con regiones no comparables o cuando la traducción muestre la existencia de una  arquitectura incompatible con el resto de la familia.
+
+También revisaremos si los dominios o motivos conocidos aparecen en posiciones comparables. Esto ayudará a detectar secuencias que todavía puedan tener problemas de anotación o que no correspondan al conjunto esperado.
+
+Una secuencia no se excluirá únicamente porque sea más larga, tenga varios gaps o presente una inserción. Primero revisaremos si conserva las regiones importantes de la familia y si la diferencia puede tener una explicación biológica.
+
+Tampoco eliminaremos una región solo porque sea variable. La variación puede contener información evolutiva. Solo retiraremos regiones cuando no podamos determinar con suficiente confianza qué posiciones son homólogas.
+
+Revisaremos visualmente los alineamientos con AliView o Jalview. Estos programas permiten observar gaps, regiones conservadas, secuencias atípicas y la correspondencia entre los nucleótidos y su traducción.
+
+Referencias:
+
+> Anders Larsson, AliView: a fast and lightweight alignment viewer and editor for large datasets, Bioinformatics, Volume 30, Issue 22, November 2014, Pages 3276–3278, https://doi.org/10.1093/bioinformatics/btu531
+
+> Procter JB, Carstairs GM, Soares B, Mourão K, Ofoegbu TC, Barton D, Lui L, Menard A, Sherstnev N, Roldan-Martinez D, Duce S, Martin DMA, Barton GJ. Alignment of Biological Sequences with Jalview. Methods Mol Biol. 2021;2231:203-224. doi: 10.1007/978-1-0716-1036-7_13. Erratum in: Methods Mol Biol. 2021;2231:C1. doi: 10.1007/978-1-0716-1036-7_18. PMID: 33289895; PMCID: PMC7116599.
+
+## 4.3 Evaluación adicional con TranslatorX y GUIDANCE2
+
+TranslatorX y GUIDANCE2 funcionarán como herramientas complementarias. No será necesario aplicarlas de manera obligatoria a las 51 familias.
+
+Utilizaremos estas herramientas cuando un alineamiento presente muchas regiones ambiguas, grandes diferencias de longitud, numerosos gaps o resultados difíciles de interpretar.
+
+TranslatorX traduce los CDS, alinea las proteínas con un alineador aminoacídico y después recupera el alineamiento de nucleótidos conservando la correspondencia entre aminoácidos y codones.
+
+El resultado de TranslatorX se utilizará como alineamiento alternativo. No mezclaremos columnas de MACSE y TranslatorX para construir un tercer alineamiento. Compararemos ambos resultados y revisaremos las regiones donde cambie la correspondencia entre posiciones
+
+Referencia:
+
+> Federico Abascal, Rafael Zardoya, Maximilian J. Telford, TranslatorX: multiple alignment of nucleotide sequences guided by amino acid translations, Nucleic Acids Research, Volume 38, Issue suppl_2, 1 July 2010, Pages W7–W13, https://doi.org/10.1093/nar/gkq291
+
+Para este proyecto podemos utilizar TranslatorX junto con MAFFT para generar un alineamiento alternativo y compararlo con el resultado de MACSE.
+
+Referencia:
+
+> Kazutaka Katoh, Daron M. Standley, MAFFT Multiple Sequence Alignment Software Version 7: Improvements in Performance and Usability, Molecular Biology and Evolution, Volume 30, Issue 4, April 2013, Pages 772–780, https://doi.org/10.1093/molbev/mst010
+
+En la comparación revisaremos la posición de los gaps, los límites de las regiones conservadas, las inserciones o deleciones largas, las regiones terminales y las posiciones que cambien entre métodos.
+
+Cuando MACSE y TranslatorX produzcan resultados similares en las regiones centrales, tendremos mayor confianza en esas posiciones. Si los alineamientos son muy diferentes, revisaremos las secuencias antes de continuar.
+
+GUIDANCE2 podrá utilizarse para evaluar qué tan estable es un alineamiento frente a cambios en el árbol guía y otros parámetros. La herramienta genera puntuaciones de confianza para secuencias, residuos y columnas.
+
+Cuando utilicemos GUIDANCE2, evaluaremos la estabilidad del alineamiento aminoacídico y relacionaremos sus puntuaciones con los codones correspondientes. Una columna aminoacídica equivale a una columna completa de codón en el alineamiento de nucleótidos.
+
+
+Referencia:
+
+> Itamar Sela, Haim Ashkenazy, Kazutaka Katoh, Tal Pupko, GUIDANCE2: accurate detection of unreliable alignment regions accounting for the uncertainty of multiple parameters, Nucleic Acids Research, Volume 43, Issue W1, 1 July 2015, Pages W7–W14, https://doi.org/10.1093/nar/gkv318
+
+Usaremos GUIDANCE2 como apoyo en los casos problemáticos. Sus resultados no serán el único criterio para eliminar una secuencia o una región.
+
+No eliminaremos automáticamente una columna o secuencia únicamente porque tenga una puntuación baja. Utilizaremos esa información junto con la comparación entre métodos, la cobertura, los dominios y la revisión visual.
+
+
+## 4.4 Generación de las versiones completa y conservadora
+
+Para cada familia produciremos dos versiones del alineamiento codónico.
+
+- versión completa: alineamiento codónico valido después de resolver los cambios que puedan existir en el marco de lectura, codones de paro, caracteres especiales y secuencias problemáticas. Conservará todas las columnas codónicas restantes.
+
+- versión conservadora: se obtendrá a partir de la versión completa, podremos retirar regiones donde exista una discordancia entre MACSE y TranslatorX, puntuaciones bajas de GUIDANCE2, baja cobertura, gaps difíciles de posicionar o falta de correspondencia entre las traducciones.
+
+
+Cuando eliminemos una región del alineamiento codónico, retiraremos columnas completas de codones. No eliminaremos uno o dos nucleótidos aislados, porque esto rompería el marco de lectura.
+
+Las dos versiones permitirán evaluar si los resultados posteriores dependen de regiones difíciles de alinear. Una señal evolutiva tendrá mayor respaldo si aparece en ambas versiones y no depende únicamente de una región ambigua.
+
+## 4.5 Preparación del árbol final para los modelos codónicos
+
+Al finalizar los alineamientos comprobaremos que el conjunto definitivo de secuencias coincida con las puntas del árbol.
+
+Cuando únicamente se hayan retirado algunas secuencias y la región alineada no haya cambiado de forma importante, podremos cortar ramas del árbol del Módulo 2 y reestimar las longitudes de rama.
+
+Cuando haya cambiado la isoforma, el conjunto taxonómico o la región analizada, reconstruiremos el árbol a partir de la traducción aminoacídica del alineamiento codónico final.
+
+El árbol y el alineamiento deberán contener exactamente los mismos identificadores antes de ejecutar CODEML, GARD, BUSTED u otros modelos
+
+## Resultados esperados del Módulo 4
+
+Para cada familia se conservara yse espera generar lo sigueinte: 
+
+- alineamiento codónico completo
+- alineamiento codónico conservador
+- traducciones aminoacídicas correspondientes
+- mapa entre posiciones codónicas, aminoacídicas y la proteína de referencia
+- reporte de calidad del alineamiento
+- comandos y versiones de MACSE, TranslatorX, MAFFT y GUIDANCE2 cuando se hayan utilizado;
+- árbol final o la decisión sobre cómo se obtendrá.
+
+El módulo terminará cuando cada familia tenga un alineamiento codónico válido y cuando el árbol y el alineamiento utilizados en los análisis posteriores contengan exactamente las mismas secuencias.
+
+
+# MÓDULO 5. Métricas descriptivas de las proteínas
+
+En este módulo se calcularan las metricas para determinar el grado de similitud, conservación y divergencia de cada familia proteica.
+
+Para ello usaremos los alineamientos aminoacídicos derivados de los CDS validados y alineados previamente; cada familia, subfamilia o grupo de parálogos se analizará por separado siguiendo la clasificacion establecida. 
+
+Es importante que estos estimadores se calculen sobre las versiones completa y conservadora del alineamiento  sin mezclar los resultados de ambas versiones. Esto permitira comparar y comprobar si las estimaciones se ven afectadas por regiones difíciles de alinear.
+
+Estas métricas no demuestran por sí solas la existencia de selección positiva ni confirman relaciones de homología u ortología.
+
+Utilizaremos las traducciones aminoacídicas de los alineamientos codónicos completo y conservador generados en el Módulo 4. Esto permitirá mantener una correspondencia directa entre las posiciones proteicas y los codones que se analizarán posteriormente.
+
+Las dos versiones deberán contener las mismas secuencias y los mismos identificadores. Solo cambiarán las columnas conservadas.
+
+Las proteínas de referencia y los outgroups se excluirán de las métricas descriptivas, a menos de que formen parte del conjunto definido para la familia, ya que incluirlas podría modificar las identidades, distancias y perfiles de variabilidad sin representar el conjunto principal del proyecto.
+
+
+## 5.1 Identidad y distancia proteica
+
+La identidad proteica muestra la proporción de aminoácidos iguales entre cada par de secuencias.
+
+Para dos secuencias a y b, primero identificaremos las columnas donde ambas tengan un aminoácido válido. Los gaps, los caracteres ambiguos y los codones de paro no se contarán como aminoácidos.
+
+Consideraremos como válidos los 20 aminoácidos estándar. Los caracteres X, otros símbolos ambiguos, los gaps y los caracteres * se excluirán del denominador. 
+
+Si encontramos un carácter * interno en una traducción final, regresaremos a los módulos 3 y 4 para revisar el CDS y el alineamiento antes de calcular las métricas
+
+La identidad se calcula como:
+
+$$
+I_{ab} = \frac{N_{\text{aminoácidos idénticos}}}{N_{\text{posiciones comparables}}} \times 100
+$$
+
+
+Por ejemplo, si dos proteínas comparten 180 aminoácidos iguales en 200 posiciones comparables, su identidad será de 90%.
+
+También calcularemos la proporción del alineamiento que pudo compararse para cada par:
+
+$$
+O_{ab} = \frac{N_{\text{posiciones comparables}}}{L}
+$$
+
+donde L corresponde a la longitud del alineamiento analizado. Esta medida permite distinguir una identidad alta calculada sobre casi toda la proteína de una identidad alta obtenida a partir de una región corta.
+
+La longitud comparada deberá registrarse junto con la identidad. 
+También es importante mencionar que un porcentaje alto calculado sobre una región pequeña no tiene el mismo significado que el mismo porcentaje calculado sobre casi toda la proteína. 
+
+Distintos estudios de identidad proteica han mostrado que la interpretación depende tanto del porcentaje de identidad como de la longitud del alineamiento.
+
+Los gaps no se incluirán en el denominador de la identidad, la cobertura y los gaps se analizarán por separado en el siguiente punto. 
+
+Esto evitará que una proteína parcial parezca muy conservada únicamente porque coincide con una región corta.
+
+También podríamos calcular la distancia observada o p-distance:
+
+$$
+P_{ab} = \frac{N_{\text{aminoácidos diferentes}}}{N_{\text{posiciones comparables}}}
+$$
+
+Sin embargo, cuando solo contamos coincidencias y diferencias, esta proporción también se puede obtener a partir del porcentaje de identidad:
+
+$$
+P_{ab} = 1 - \frac{I_{ab}}{100}
+$$
+
+
+Considerando esto, la p-distance contiene prácticamente la misma información que la identidad. No conviene presentarlas como dos estimadores independientes.
+
+Para representar una distancia evolutiva utilizaremos la distancia patrística obtenida del árbol proteico final asociado con el conjunto de secuencias analizado.
+
+Esta distancia corresponde a la suma de las longitudes de las ramas que conectan dos secuencias.
+
+$$ D_{ab} = \sum_{e \in \text{camino}(a,b)} \ell_{e} 
+$$
+
+donde  $\ell_{e} $ representa la longitud de cada rama.
+
+La distancia patrística principal se calculará a partir del árbol final asociado con el alineamiento conservador. Si también queremos calcularla para la versión completa, tendremos que reestimar las longitudes de rama utilizando esa versión del alineamiento. No utilizaremos una misma matriz de distancias como si representara simultáneamente ambas versiones.
+
+Las longitudes de las ramas estimadas bajo modelos de sustitución representan el número esperado de sustituciones por sitio. La distancia patrística puede considerar sustituciones acumuladas que ya no son visibles al comparar directamente las secuencias.
+
+Referencias:
+> Le, S. Q., Dang, C. C., & Gascuel, O. (2012). Modeling protein evolution with several amino acid replacement matrices depending on site rates. Molecular biology and evolution, 29(10), 2921–2936. https://doi.org/10.1093/molbev/mss112
+
+> Cuong Cao Dang, Bui Quang Minh, Hanon McShea, Joanna Masel, Jennifer Eleanor James, Le Sy Vinh, Robert Lanfear, nQMaker: Estimating Time Nonreversible Amino Acid Substitution Models, Systematic Biology, Volume 71, Issue 5, September 2022, Pages 1110–1123,
+
+Utilizaremos el modelo seleccionado con ModelFinder para cada familia, la selección del modelo es importante porque las probabilidades de sustitución no son iguales para todos los aminoácidos y las tasas pueden variar entre posiciones.
+
+El árbol utilizado para calcular estas distancias deberá contener las mismas secuencias que el alineamiento usado en este modulo.
+
+Nota: El árbol utilizado deberá contener exactamente las mismas secuencias que el conjunto empleado para calcular las distancias. Si contiene referencias, outgroups o proteínas sin CDS validado, tendremos que quitar esas puntas y reestimar las longitudes de rama, o utilizaremos el árbol final preparado después del Módulo 4.
+
+Para cada familia conservaremos la matriz completa de identidades, una tabla con el número y la proporción de posiciones comparables por par y la matriz de distancias patrísticas asociada con el árbol correspondiente.
+
+Como resumen de los calculos podemos registrar la mediana, el intervalo intercuartílico y el rango. 
+
+Como resumen, la identidad permite describir similitud observada y la distancia patrística representa la divergencia evolutiva estimada bajo un modelo especifico. 
+
+## 5.2 Longitud, cobertura y gaps
+
+Para poder determinar cuánto del alineamiento contiene información comparable y cómo se distribuyen los gaps se podran hacer los siguientes calculos.
+
+Primero podemos registrar la longitud total del alineamiento con la siguiente fórmula:
+
+$$ L = N_{\text{columnas del alineamiento}} 
+$$
+
+La longitud L se calculará de manera independiente para las versiones completa y conservadora. Cada versión tendrá sus propios denominadores para la cobertura, los gaps, la ocupación y la longitud evaluable.
+
+La longitud total incluye columnas con aminoácidos, gaps o caracteres ambiguos.
+
+Para cada secuencia $s$ contaremos:
+
+- $r_{s}$: posiciones con un aminoácido válido
+- $g_{s}$: posiciones con gap
+- $u_{s}$: posiciones con un carácter ambiguo
+
+La cobertura de cada secuencia se calculará como:
+
+$$ O_{s} = \frac{r_{s}}{L} 
+$$
+
+La proporción de gaps se podrá calcular con:
+
+$$ G_{s} = \frac{g_{s}}{L} 
+$$
+
+Y la proporción de caracteres ambiguos se calculará como:
+
+$$ A_{s} = \frac{u_{s}}{L} 
+$$
+
+Conviene registrar los gaps y los caracteres ambiguos por separado. Un gap puede ser compatible con una inserción o deleción, pero también puede reflejar una secuencia parcial, datos faltantes, diferencias de anotación o incertidumbre del alineamiento. 
+
+También calcularemos la ocupación de cada columna. Para una columna $j$:
+
+$$ O_{j} = \frac{n_{j}}{N} 
+$$
+
+Donde $n_{j}$ representa el número de secuencias con un aminoácido válido en esa columna y $N$ es el número total de secuencias de la familia.
+
+La proporción de gaps por columna en este caso será:
+
+$$ G_{j} = \frac{g_{j}}{N} 
+$$
+
+Estos calculos permitirán reconocer proteínas parciales, regiones terminales presentes en pocas especies, inserciones particulares y columnas con poca información.
+
+Esto es importante porque para calcular sitios sin cambios, variables y variabilidad por posición necesitaremos definir qué columnas tienen información suficiente. 
+
+Como criterio inicial, podemos considerar evaluable una columna cuando:
+
+$$ n_{j} \geq \max(5, \lceil 0.70N \rceil) 
+$$
+
+Esto significa que la columna deberá contener aminoácidos válidos en al menos el 70% de las secuencias y nunca en menos de cinco secuencias.
+
+Este umbral funciona como una regla operativa que deberá definirse antes de comparar los genes, no respresenta un limite biologico como tal. 
+
+Para genes de mayor importancia se puede observar si los reultados se mantienen modificando los limites a valores mas estrictos o permisivos . 
+
+Para evaluar la sensibilidad al umbral podremos repetir los cálculos con valores de 60% y 80%. 
+
+A partir de este criterio, que como se menciono, puede ser modificado, calcularemos la longitud evaluable con la siguiente formula: 
+
+$$ L_{\text{eval}} = N_{\text{columnas que cumplen el criterio de ocupación}} 
+$$
+
+No eliminaremos una secuencia o una posición porque tenga gaps. Las regiones con gaps pueden representar diferencias biológicas reales. Además, los estudios sobre filtrado de alineamientos han mostrado que retirar posiciones de manera automática no siempre mejora los análisis y puede empeorar algunas filogenias génicas.
+
+Los gaps y la cobertura se usarán como indicadores de calidad y disponibilidad de información. 
+No se interpretarán como estimadores de evolución por sí solos.
+
+
+Calcularemos estas métricas de manera independiente en las dos versiones del alineamiento. La versión completa mostrará la cantidad total de regiones variables, gaps y datos ambiguos que permanecieron después del control técnico. La versión conservadora mostrará cuánto material quedó después de retirar las regiones cuya correspondencia no pudo establecerse con suficiente confianza.
+
+Referencia:
+
+> Ge Tan, Matthieu Muffato, Christian Ledergerber, Javier Herrero, Nick Goldman, Manuel Gil, Christophe Dessimoz, Current Methods for Automated Filtering of Multiple Sequence Alignments Frequently Worsen Single-Gene Phylogenetic Inference, Systematic Biology, Volume 64, Issue 5, September 2015, Pages 778–791, https://doi.org/10.1093/sysbio/syv033
+
+## 5.3 Sitios sin cambios y variables
+
+Usaremos el término sitios invariantes observados para las columnas donde todas las secuencias con información válida presentan el mismo aminoácido. Este término describe el patrón del alineamiento sin afirmar que nunca ocurrieron sustituciones durante la historia evolutiva.
+Solo clasificaremos las columnas que cumplan el criterio mínimo de ocupación definido en el punto pasado
+
+Para cada columna $j$ se deben contar el número de aminoácidos diferentes observados:
+
+$$ K_{j} = N_{\text{tipos de aminoácidos presentes}} 
+$$
+
+Un sitio será sin cambio cuando:
+
+$$ K_{j} = 1 
+$$
+
+Esto significa que todas las secuencias con información válida presentan el mismo aminoácido.
+
+Un sitio será variable cuando:
+
+$$ K_{j} \geq 2 
+$$
+
+Los gaps y los caracteres ambiguos no se contarán como estados diferentes.
+
+La proporción de sitios sin cambio se calculará como:
+
+$$ P_{\text{sincambio}} = \frac{N_{\text{sincambio}}}{L_{\text{eval}}} 
+$$
+
+Y la proporción de sitios variables será:
+
+$$ P_{\text{variables}} = \frac{N_{\text{variables}}}{L_{\text{eval}}} 
+$$
+
+Cuando todas las columnas evaluables puedan clasificarse ambas proporciones sumarán uno.
+
+También podremos identificar sitios informativos para parsimonia. 
+Una posición será informativa cuando contenga al menos dos aminoácidos diferentes y cada uno aparezca en por lo menos dos secuencias.
+
+Esta será una métrica descriptiva opcional. No se utilizará como criterio principal de calidad ni como sustituto del soporte de las ramas.
+
+Este estimador no es necesario para construir los árboles de máxima verosimilitud, pero puede servir para indicar cuánta señal filogenética observable contiene un alineamiento (no es lo mismo a soporte de ramas)
+
+Los sitios sin cambio pueden estar relacionados con restricciones estructurales o funcionales. El análisis de conservación se utiliza  para reconocer posiciones importantes, como residuos catalíticos, regiones de unión o elementos necesarios para mantener la estructura, pero una posición sin cambio no demuestra por sí sola una función específica.
+
+Referencia:
+> John A. Capra, Mona Singh, Predicting functionally important residues from sequence conservation, Bioinformatics, Volume 23, Issue 15, August 2007, Pages 1875–1882, https://doi.org/10.1093/bioinformatics/btm270
+
+Por otro lado, un sitio variable no demuestra selección positiva. La variación puede deberse a divergencia neutral, menor restricción funcional, duplicaciones, cambios específicos de linaje o errores residuales del alineamiento. Las pruebas de selección se realizarán posteriormente con modelos codónicos.
+
+
+## 5.4 Conservación o variabilidad aminoacídica por posición
+
+El script disponible en el repositorio utilizado como referencia para este proyecto calcula para cada columna:
+
+$$C_j^* = \sum_{i} p_{ij}^2
+$$
+
+Donde $p_{ij}$ es la frecuencia del aminoácido i en la columna j.
+
+Este valor aumenta cuando uno o pocos aminoácidos dominan la posición. Lo interpretaremos como una medida de concentración de estados aminoacídicos.
+
+El complemento:
+
+$$ V_{j}^{*} = 1 - \sum_{i} p_{ij}^{2} 
+$$
+
+aumenta cuando se observan varios aminoácidos y sus frecuencias son más equilibradas. El planteamiento corresponde al índice de concentración de Simpson y a su complemento que es conocido como índice de Gini-Simpson.
+
+Referencia:
+
+> SIMPSON, E. Measurement of Diversity. Nature 163, 688 (1949). https://doi.org/10.1038/163688a0
+
+
+En la revision que habiamos hecho previamente identificamos que el script calcula concentración y que su complemento resulta más intuitivo para expresar variabilidad aminoacídica. También, que esta medida no debe confundirse con diversidad nucleotídica poblacional o con π.
+
+Sin embargo, el valor calculado directamente con frecuencias puede verse afectado por el número de secuencias disponibles. Esto es importante porque las familias no tendrán siempre las mismas especies y la ocupación cambiará entre columnas.
+
+En la referencia se señala que algunas formas del índice dependen del tamaño de muestra y desarrollos posteriores propusieron interpretaciones basadas en la probabilidad de seleccionar dos observaciones diferentes.
+
+Para este proyecto considero que es mas ultil usar como medida principal la versión calculada sin reemplazo
+
+En esta se establece que sea $n_{ij}$ el número de veces que aparece el aminoácido $i$ en la columna $j$, y sea $n_{j}$ el número total de aminoácidos válidos en esa columna.
+
+La conservación se calculará como:
+
+$$ 
+C_{j} = \frac{ \sum_{i} n_{ij} (n_{ij} - 1) }{ n_{j} (n_{j} - 1) } 
+$$
+
+
+Este valor representa la probabilidad de que dos secuencias diferentes elegidas de la columna tengan el mismo aminoácido.
+
+La variabilidad será:
+
+$$
+V_{j} = 1 - C_{j}
+$$
+
+Este valor representa la probabilidad de que dos secuencias diferentes tengan aminoácidos distintos.
+
+La interpretación será:
+
+- $C_{j}=1$ y $V_{j}=0$: todos los aminoácidos son iguales
+- valores intermedios: uno o varios aminoácidos dominan, pero existen sustituciones
+- valores altos de $V_{j}$: la posición presenta varios aminoácidos
+
+Solo calcularemos estas métricas cuando la columna cumpla el criterio mínimo de ocupación. Los gaps, los caracteres ambiguos y los paros no se incluirán en las frecuencias.
+
+La tabla por posición conservará también el valor de $n_{j}$ porque una puntuación calculada con pocas secuencias tiene menor respaldo.
+
+No es necesario descartar el cálculo original del repositorio, podemos modificar el script para que produzca:
+
+$$ \sum_{i} p_{ij}^{2} 
+$$
+	​
+
+La formulación original permitirá comparar nuestros resultados con el análisis previo. La versión basada en pares sin reemplazo será la métrica principal del proyecto. No la denominaremos versión corregida, porque no corrige la dependencia filogenética ni todas las diferencias de muestreo.
+
+### Efecto del muestreo taxonómico
+
+Las especies del proyecto no representan observaciones completamente independientes, algunas pertenecen a grupos cercanos y otras representan linajes muy distantes. Un conjunto con muchas angiospermas puede hacer que el aminoácido predominante en angiospermas tenga un peso mayor que el de algas o hongos.
+
+Como resultado principal utilizaremos el cálculo sin ponderación, porque es directo y fácil de interpretar. Como evaluación complementaria podremos calcular una versión con pesos de secuencia cuando el muestreo taxonómico sea muy desigual.
+
+Los pesos de Henikoff asignan menor influencia a secuencias redundantes y mayor influencia a secuencias que aportan estados menos representados dentro del alineamiento. Este método se desarrolló para reducir la redundancia y aumentar la representación de la diversidad en alineamientos múltiples.
+
+Referencia:
+
+> Henikoff, S., & Henikoff, J. G. (1994). Position-based sequence weights. Journal of molecular biology, 243(4), 574–578. https://doi.org/10.1016/0022-2836(94)90032-9
+
+Para una columna ponderada, definimos la probabilidad ponderada como:
+
+$$
+p_{ij}^{(w)} = \frac{ \sum_{s} w_s \mathbf{1}(x_{sj} = i) }{ \sum_{s \text{ válido}} w_s }
+$$
+
+A partir de esta probabilidad, la concentración ponderada es:
+
+$$
+C_{j}^{(w)} = \sum_{i} \left( p_{ij}^{(w)} \right)^2
+$$
+
+Y la variabilidad ponderada es:
+
+$$
+V_{j}^{(w)} = 1 - C_{j}^{(w)}
+$$
+	​
+
+Esta métrica será complementaria y no se considerará equivalente a la formulación sin reemplazo. Los pesos de Henikoff reducen la influencia de secuencias redundantes, pero no representan una corrección filogenética completa.
+
+
+### Importancia de la métrica
+
+El perfil de $C{j}$ o $V_{j}$​ permitirá localizar regiones muy conservadas, regiones variables y cambios alrededor de dominios o motivos conocidos.
+
+También permitirá comparar posteriormente los sitios identificados por MEME, FEL o CODEML con el grado de variabilidad aminoacídica observado. Un sitio señalado por un modelo codónico puede localizarse en una región conservada o en una región variable y estas situaciones tienen interpretaciones diferentes.
+
+Para realizar esta comparación utilizaremos el mapa generado en el Módulo 4 entre la posición del alineamiento, el codón, la posición aminoacídica y la proteína de referencia.
+
+La conservación por posición es útil para reconocer posibles regiones funcionales. Sin embargo, no existe una única métrica de conservación que funcione mejor en todos los casos, y estos valores no sustituyen la información estructural, funcional o filogenética.
+
+Referencia:
+
+> John A. Capra, Mona Singh, Predicting functionally important residues from sequence conservation, Bioinformatics, Volume 23, Issue 15, August 2007, Pages 1875–1882, https://doi.org/10.1093/bioinformatics/btm270
+
+La métrica de Simpson tampoco considera la semejanza fisicoquímica entre aminoácidos. Por ejemplo, contará como diferentes tanto una sustitución entre aminoácidos similares como una sustitución con propiedades muy distintas. Por ahora esto es aceptable porque buscamos una medida descriptiva simple y reproducible.
+
+## 5.5 Resumen por gen y complejo
+
+Para cada familia generaremos un resumen con las métricas principales.
+Se analizara la familia definida en el modulo 2. Si un gen original se dividió en dos subfamilias parálogas, cada subfamilia tendrá su propio resultado.
+
+Para los resúmenes por complejo también conservaremos el identificador del gen original. De esta forma evitaremos contar automáticamente varias subfamilias derivadas del mismo gen como observaciones completamente independientes.
+
+El resumen por familia incluirá el complejo, el gen o familia, el grupo taxonómico, el número de secuencias, el número de especies, el número de copias génicas, la versión del alineamiento, la longitud total y la longitud evaluable.
+
+También registraremos la mediana y el intervalo intercuartílico de la identidad por pares, la distancia patrística, la ocupación por secuencia y la proporción de gaps.
+
+Para las métricas por sitio registraremos la proporción de sitios sin cambios, la proporción de sitios variables y el resumen de la variabilidad $V_{j}$
+
+- Para esta última podremos utilizar la mediana, el intervalo intercuartílico y el rango.
+
+No mezclaremos en una misma cifra los resultados de las versiones completa y conservadora. La diferencia entre ambas servirá como una medida de sensibilidad al alineamiento.
+
+### Comparación entre genes
+
+Las métricas dependerán del conjunto taxonómico utilizado. Una familia que incluya hongos, algas y plantas probablemente tendrá menor identidad y mayor distancia que una familia analizada solo en angiospermas.
+
+Por esta razón, no compararemos directamente todos los genes sin considerar las especies incluidas.
+
+Las comparaciones podrán realizarse de dos formas:
+
+- entre genes que tengan un grupo taxonómico semejante
+- usando un subconjunto común de especies cuando sea posible
+
+Las comparaciones con el conjunto taxonómico deberán mostrar el número de especies y los clados representados.
+
+### Comparación entre complejos
+
+Para resumir un complejo utilizaremos cada gen como una observación. No agruparemos todos los sitios ni todos los pares de secuencias de los genes del complejo (Ej:primero calcularemos la mediana de identidad de cada gen, después resumiremos las medianas de los genes que forman el complejo)
+
+Esta estrategia evita que un gen muy largo o con muchas secuencias domine el resultado general.
+
+Los complejos que contienen un solo gen no permitirán estimar una tendencia general. En esos casos, el valor corresponderá únicamente a ese gen.
+
+
+Resultados esperados del módulo: 
+
+Para cada familia 
+
+- una matriz de identidad por pares
+- una matriz de distancia patrística
+- una tabla de cobertura y gaps por secuencia y por columna
+- una tabla con la clasificación y variabilidad de cada posición
+- un resumen por familia para las versiones completa y conservadora
+
+
+# MÓDULO 6. Divergencia y pruebas principales de selección
+
+En este módulo analizaremos los alineamientos codónicos generados previamente para estimar la divergencia sinónima y no sinónima y buscar evidencia de selección positiva o diversificante.
+
+Utilizaremos como entrada principal la versión conservadora de cada alineamiento. 
+Esta versión contiene las regiones cuya correspondencia entre secuencias puede establecerse con mayor confianza. 
+
+La versión completa de los alineamientos se conservará para evaluar y comparar los resultados con las dos versiones. Los análisis principales utilizarán la versión conservadora y los resultados prioritarios se compararán posteriormente con la versión completa.
+
+Cada familia, subfamilia o grupo de parálogos se analizará por separado según la clasificación definida previamente 
+No combinaremos secuencias que pertenezcan a familias diferentes
+
+Los análisis de este módulo utilizarán modelos codónicos para estimar las tasas de sustitución sinónima y no sinónima y evaluar si los datos presentan evidencia compatible con diferentes formas de selección. Las conclusiones dependerán del alineamiento, el árbol y los supuestos de cada modelo.
+
+Referencia:
+
+> Sandra Álvarez-Carretero, Paschalia Kapli, Ziheng Yang, Beginner's Guide on the Use of PAML to Detect Positive Selection, Molecular Biology and Evolution, Volume 40, Issue 4, April 2023, msad041, https://doi.org/10.1093/molbev/msad041
+
+## 6.1 Preparación de los conjuntos y árboles
+
+Antes de ejecutar los modelos tenemos que comprobar que el alineamiento codónico y el árbol contengan exactamente las mismas secuencias y los mismos identificadores.
+
+El árbol de entrada será el árbol final preparado después del Módulo 4. Este árbol deberá contener exactamente las mismas secuencias que el alineamiento codónico analizado. Si el árbol de revisión del Módulo 2 contiene proteínas de referencia, outgroups, isoformas sustituidas o proteínas sin CDS validado, retiraremos esas puntas y reestimaremos las longitudes de rama, o reconstruiremos el árbol cuando el conjunto de secuencias o la región analizada hayan cambiado. 
+
+No utilizaremos directamente el árbol de especies basado en 18S porque los modelos necesitan una hipótesis filogenética adecuada para la familia génica analizada.
+
+Para CODEML utilizaremos la topología no enraizada porque los modelos M0 y de sitios no necesitan conocer la raíz cuando no asumimos un reloj molecular. 
+
+La raíz sí deberá revisarse posteriormente para los modelos que asignen procesos diferentes a ramas específicas, como algunos análisis branch-site. Para M0 y los modelos de sitios utilizaremos la topología no enraizada.
+
+CODEML podrá estimar nuevamente las longitudes de las ramas bajo el modelo codónico, por lo que no necesitamos conservar las longitudes obtenidas del alineamiento proteico. También retiraremos del archivo Newick los valores de bootstrap y SH-aLRT.
+
+Prepararemos una copia específica del árbol para PAML, sin valores de SH-aLRT, bootstrap ni otras anotaciones internas. Conservaremos por separado el árbol original con sus soportes para la interpretación biológica. Si posteriormente necesitamos etiquetas de ramas para HyPhy o CODEML branch-site, generaremos otra copia del árbol con las etiquetas correspondientes.
+
+Para poder hacer los analisis consecuentes es importante que para este punto revisemos la siguiente checklist:
+
+- que la longitud del alineamiento sea múltiplo de tres
+- que todas las secuencias tengan la misma longitud alineada
+- que no existan codones de paro internos
+- que no se mantengan símbolos especiales de MACSE
+- que los encabezados sean únicos
+- que no existan secuencias idénticas duplicadas
+- que el haya variación suficiente para estimar sustituciones
+- que las secuencias y las puntas del árbol coincidan
+
+Acorde a la referencia no existe un número universal de secuencias que garantice suficiente potencia para todos los modelos. La capacidad de detectar selección también depende de la longitud del gen, la divergencia, el número de sustituciones y la distribución de las ramas. Los conjuntos con pocas secuencias cercanas pueden no contener suficiente información para identificar sitios bajo selección.
+
+Referencia:
+
+> Anisimova, M., Bielawski, J. P., & Yang, Z. (2002). Accuracy and power of bayes prediction of amino acid sites under positive selection. Molecular biology and evolution, 19(6), 950–958. https://doi.org/10.1093/oxfordjournals.molbev.a004152
+
+Por esta razón, para cada familia podemos hacer una clasificacion que nos permita separar en categorias como las siguientes: 
+
+1. Apta para modelos codonicos: contiene un número de secuencias y codones compatible con el método, el árbol y el alineamiento son válidos y las ejecuciones proveen  soluciones estables.
+
+2. Descriptiva: solo permite calcular algunas tasas, pero no proporciona información suficiente para pruebas de selección.
+3. No evaluable: presenta problemas de distinta indole 
+
+Esta clasificación tendra que estar basada en las métricas obtenidas en el Módulo 5 y el comportamiento de los modelos 
+
+> Para automatizar esta etapa necesitaremos un script que compare los nombres del árbol y el alineamiento, elimine puntas cuando corresponda, convierta los archivos al formato requerido por PAML y prepare las entradas para HyPhy.
+
+
+## 6.2 Evaluación de recombinación con GARD
+
+Antes de realizar las pruebas principales de selección evaluaremos evaluaremos si un único árbol describe adecuadamente todo el alineamiento o si existen regiones compatibles con historias filogenéticas diferentes.
+
+Para ello utilizaremos GARD, disponible en HyPhy (Hypothesis Testing using Phylogenies) que es un software de codigo abierto usado para el analisis de secuencias geneticas. 
+
+GARD busca puntos del alineamiento donde cambia la topología o el patrón filogenético que explica mejor las secuencias usando un algoritmo genético y compara modelos con diferentes posiciones de ruptura. Cuando encuentra un cambio genera segmentos con árboles filogenéticos propios.
+
+Referencia:
+
+> Sergei L. Kosakovsky Pond, David Posada, Michael B. Gravenor, Christopher H. Woelk, Simon D. W. Frost, Automated Phylogenetic Detection of Recombination Using a Genetic Algorithm, Molecular Biology and Evolution, Volume 23, Issue 10, October 2006, Pages 1891–1901, https://doi.org/10.1093/molbev/msl051
+
+Este paso es importante porque BUSTED y los modelos de sitios de CODEML normalmente suponen que todo el alineamiento puede explicarse con un mismo árbol. Considerando que cada region tendra un contexto distinto el utilizar un solo árbol puede producir estimaciones incorrectas y aumentar los falsos positivos en las pruebas de selección.
+
+Referencias:
+
+> Anisimova, M., Nielsen, R., & Yang, Z. (2003). Effect of recombination on the accuracy of the likelihood method for detecting positive selection at amino acid sites. Genetics, 164(3), 1229–1236. https://doi.org/10.1093/genetics/164.3.1229
+
+> Sandra Álvarez-Carretero, Paschalia Kapli, Ziheng Yang, Beginner's Guide on the Use of PAML to Detect Positive Selection, Molecular Biology and Evolution, Volume 40, Issue 4, April 2023, msad041, https://doi.org/10.1093/molbev/msad041
+
+- La entrada de GARD será el alineamiento codónico conservador
+- Aplicaremos el análisis a las familias que contengan suficiente variación filogenética
+- Un alineamiento con muy pocos sitios variables puede no proporcionar información suficiente para distinguir entre árboles.
+
+Un resultado de GARD no se interpretará automáticamente como una recombinación biológica confirmada. 
+
+Cuando GARD detecte un posible punto de ruptura, primero revisaremos su posición en el alineamiento y comprobaremos si coincide con una región ambigua, un dominio o una inserción.
+
+Si el punto de ruptura se mantiene después de esta revisión, conservaremos los segmentos y los árboles producidos por GARD. La documentación actual de HyPhy indica que los conjuntos particionados de GARD se procesan de forma nativa en métodos como MEME, FEL, FUBAR y SLAC. No asumiremos que todos los métodos de HyPhy aceptan directamente el mismo formato..
+
+Referencia:
+
+> http://help.datamonkey.org/methods/gard.html
+
+Para CODEML analizaremos cada segmento por separado con su árbol correspondiente, siempre que conserve suficiente longitud e información. Para BUSTED comprobaremos la compatibilidad de la versión instalada; cuando no admita varias topologías, ejecutaremos el análisis por segmento en lugar de utilizar directamente el archivo particionado.
+
+Para esta parte del analisis tenemos que cumplir con lo siguiente:
+- HyPhy instalado localmente
+- alineamiento codónico conservador
+- archivo de salida de GARD en formato JSON o particionado
+
+Para 51 familias conviene utilizar HyPhy desde la línea de comandos y conservar Datamonkey principalmente para visualizar o revisar algunos resultados (HyPhy se peude ejecutar localmente y admite GARD como análisis estándar)
+
+Referencias:
+
+> https://hyphy.org/installation/
+> https://github.com/veg/hyphy
+
+## 6.3 Estimación de divergencia con CODEML M0 y YN00
+
+La base de estos análisis será la relación:
+$$ \omega = \frac{d_N}{d_S} $$
+
+Donde ${d_N}$ representa el número estimado de sustituciones no sinónimas por sitio no sinónimo y ${d_S}$ representa el número estimado de sustituciones sinónimas por sitio sinónimo.
+
+De forma general:
+$\omega < 1$
+
+indica que las sustituciones no sinónimas se fijan con menor frecuencia que las sinónimas y es compatible con selección purificadora.
+
+$\omega =1$
+
+es compatible con una evolución cercana a la neutralidad
+
+$\omega>1$
+
+indica un exceso de sustituciones no sinónimas y puede mostrar selección positiva o diversificante. Esta interpretación va acorde con el modelo, pero no significa que cualquier valor ligeramente mayor que se deba considerar como evidencia estadística suficiente.
+
+Estas interpretaciones corresponden a la escala y al conjunto evaluado por el modelo. Un valor promedio menor que uno no descarta selección positiva en algunos sitios o ramas. De igual manera, un valor mayor que uno no constituye por sí solo una prueba estadística si la estimación es inestable o si ${d_S}$ es muy pequeño.
+
+### CODEML M0
+
+Utilizaremos el modelo M0 de CODEML para estimar un solo valor de $\omega$  para todas las posiciones y todas las ramas de una familia.
+
+M0 supone que toda la historia del gen puede resumirse con una misma presión selectiva. Esta suposición no es completamente realista para la mayoría de las proteínas, pero el resultado genera una medida general de restricción evolutiva.
+
+Un resultado de M0 menor que uno indicará que en promedio predominan las restricciones purificadoras. Sin embargo, esto no permite concluir que ninguna posición estuvo bajo selección positiva. 
+
+> Un valor promedio bajo puede ocultar selección en pocos sitios o en unas cuantas ramas.
+
+M0 no se utilizará como prueba principal de selección positiva, en este caso, su funcion general sera describir la presión selectiva promedio, comparar familas con grupos taxonomicos similares y proporcionar una referencia general de la presión selectiva promedio y ayudar a detectar estimaciones extremas o inestables antes de ajustar modelos más complejos.
+
+Cuando GARD no encuentre cambios de historia evolutiva, calcularemos M0 sobre toda la familia. 
+
+Cuando GARD identifique segmentos bien respaldados, podremos calcular un valor independiente para cada segmento
+
+En esos casos reportaremos los valores por segmento. No calcularemos un promedio simple de los valores de ω, porque los segmentos pueden tener diferente longitud, número de sustituciones e incertidumbre.
+
+### YN00
+
+YN00 calculará ${d_N} , {d_S} y \omega$ entre pares de secuencias.
+
+El método de Yang y Nielsen corrige sustituciones múltiples y considera el sesgo entre transiciones y transversiones y las diferencias en frecuencias de bases o codones. Proporciona una estimación más completa que contar directamente los cambios sinónimos y no sinónimos observados.
+
+Referencia:
+> Ziheng Yang, Rasmus Nielsen, Estimating Synonymous and Nonsynonymous Substitution Rates Under Realistic Evolutionary Models, Molecular Biology and Evolution, Volume 17, Issue 1, January 2000, Pages 32–43, https://doi.org/10.1093/oxfordjournals.molbev.a026236
+
+No calcularemos YN00 para todas las combinaciones posibles, antes de ejecutar prepararemos una tabla de pares definidos a partir de una pregunta biológica o comparativa.
+
+Podremos incluir ortólogos de especies cercanas, pares que representen comparaciones taxonómicas equivalentes entre genes, copias parálogas derivadas de una duplicación identificada 
+
+Para cada par registraremos el gen, las dos secuencias, el tipo de relación, la justificación de la comparación y el conjunto taxonómico.
+
+Conservaremos ${d_N}$, ${d_S}$ y ω por separado. Los casos con ${d_S=0}$, valores no definidos, estimaciones extremas o muy pocas sustituciones se marcarán como inestables y no se interpretarán únicamente a partir de la razón ω.
+
+### Configuración de PAML
+
+Para M0 utilizaremos inicialmente:
+
+```bash 
+seqtype = 1
+runmode = 0
+model = 0
+NSsites = 0
+clock = 0
+CodonFreq = 2
+icode = 0
+fix_omega = 0
+omega = 0.4
+cleandata = 0
+fix_blength = 0
+```
+
+cleandata = 0 permitirá conservar codones con datos faltantes sin eliminar automáticamente toda la columna. La guía de CODEML recomienda revisar previamente el alineamiento y conservar los datos faltantes como tales, en lugar de eliminar todas las columnas que contengan un gap.
+
+Para las frecuencias de codón tendremos que utilizar la misma configuración en los modelos nulos y alternativos. Como punto de partida podemos utilizar F3×4 (CodonFreq = 2), que estima frecuencias nucleotídicas diferentes para las tres posiciones del codón. 
+
+Utilizaremos F3×4 (CodonFreq = 2) como configuración principal para mantener una estrategia consistente entre familias. En un conjunto piloto definido previamente podremos evaluar FMutSel como análisis de sensibilidad. La selección del modelo no se basará en la estabilidad, convergencia, complejidad y ajuste del modelo.
+
+Los modelos nulo y alternativo de cada comparación utilizarán siempre la misma configuración de frecuencias de codón.
+
+## 6.4  Prueba de selección a escala de gen con BUSTED
+
+Podemos utilizar BUSTED como prueba principal de selección a escala de gen.
+
+BUSTED evalúa si existe evidencia de que al menos un sitio haya experimentado selección diversificante en al menos una rama del conjunto evaluado. No identifica directamente el sitio ni la rama responsable y no implica que todo el gen o todo el árbol hayan evolucionado bajo selección positiva
+
+Referencia:
+> Ben Murrell, Steven Weaver, Martin D. Smith, Joel O. Wertheim, Sasha Murrell, Anthony Aylward, Kemal Eren, Tristan Pollner, Darren P. Martin, Davey M. Smith, Konrad Scheffler, Sergei L. Kosakovsky Pond, Gene-Wide Identification of Episodic Selection, Molecular Biology and Evolution, Volume 32, Issue 5, May 2015, Pages 1365–1371, https://doi.org/10.1093/molbev/msv035 
+d
+
+Como para este punto aun no planteamos hipótesis específicas para ramas particulares, ejecutaremos BUSTED utilizando todas las ramas del árbol.
+Los análisis dirigidos a duplicaciones o ramas particulares se realizarán en el Módulo 7.
+
+La entrada será el alineamiento codónico conservador y el árbol génico con las mismas secuencias. Cuando GARD identifique regiones con historias filogenéticas diferentes comprobaremos si la versión de BUSTED instalada admite ese tipo de entrada. Como la documentación de GARD no incluye actualmente BUSTED entre los métodos que procesan de forma nativa sus conjuntos particionados, utilizaremos los segmentos por separado cuando sea necesario.
+
+Esto se ejecuta mediante un comando en la terminal, que acorde a la documentacion oficial seria algo similar a:
+
+```bash
+hyphy busted \
+  --alignment <file> \
+  --tree <file> \
+  --branches All \
+  --output GENE.busted.json
+```
+
+Referencia: 
+> https://hyphy.org/tutorials/CL-prompt-tutorial/
+
+Dependiendo del resultado, lo interpretaremos de la siguiente manera:
+
+- resultado significativo: existe evidencia de selección diversificante en al menos un sitio y una rama del conjunto evaluado.
+- resultado no significativo: indica que no encontramos evidencia suficiente
+- resultado no significativo: demuestra que el gen nunca estuvo bajo selección positiva
+
+BUSTED puede tener poca potencia cuando existe muy poca divergencia o cuando la señal se limita a pocos cambios. Tambien los errores de alineamiento o los cambios múltiples dentro de un codón pueden producir señales incorrectas. 
+
+### BUSTED+MSS
+
+Otro punto relevante a considerar es que HyPhy incorporó este año una variante de BUSTED que permite modelar distintas clases de tasas sinónimas, reduciendp falsos positivos producidos cuando la tasa sinónima no es constante entre posiciones. 
+
+Sin embargo, el artículo correspondiente a la actualizacion esta en pre-print, por lo que se tendra que evaluar si  utilizaremos BUSTED estándar como análisis principal o si  podremos aplicar BUSTED+MSS
+
+Revisar: Consideración sobre variación en las tasas sinónimas
+
+Tras revision, consideramos que BUSTED estándar funciona mejor como la prueba principal de este módulo. La opción MSS, que permite modelar varias clases de tasas sinónimas, se reservará para el Módulo 7 como análisis de sensibilidad en genes prioritarios o resultados potencialmente afectados por variación sinónima.
+
+
+## 6.5 Modelos de sitios con CODEML
+
+Los modelos de sitios permitirán evaluar si una parte de los codones presenta un valor de $\omega > 1$
+
+Estos modelos permiten que $\omega$ cambie entre posiciones, pero asumen que la distribución de presiones selectivas se mantiene a lo largo de las ramas del árbol. 
+
+Es por esto que resultan adecuados para detectar señales repetidas o mantenidas en distintas partes de la filogenia, pero pueden perder señales que ocurrieron solamente en una rama. BUSTED complementa este análisis porque permite variación entre sitios y ramas.
+
+Referencia:
+
+> Yang, Z., Nielsen, R., Goldman, N., & Pedersen, A. M. (2000). Codon-substitution models for heterogeneous selection pressure at amino acid sites. Genetics, 155(1), 431–449. https://doi.org/10.1093/genetics/155.1.431
+
+### Comparación M1a frente a M2a (modelos de evolucion molecular)
+
+M1a divide los sitios en dos grupos. 
+
+Un grupo tiene:
+
+$ 0 < {\omega_0}< 1$
+
+y representa posiciones bajo selección purificadora.
+
+El segundo grupo tiene:
+
+${\omega_1} =1$
+
+y representa posiciones cercanas a la neutralidad.
+
+M2a añade una tercera clase:
+
+${\omega_2} >1 $
+
+que permite que una proporción de los sitios esté bajo selección positiva.
+
+Compararemos las verosimilitudes de ambos modelos usando la siguiente formula (estadístico de la prueba de razón de verosimilitud (LRT)): 
+
+$$ 2\Delta\ell = 2(\ell_{M2a} - \ell_{M1a}) 
+$$
+
+La comparación utiliza dos grados de libertad. Si M2a mejora significativamente el ajuste, tendremos evidencia de que una clase con $\omega >1$ explica mejor los datos que el modelo casi neutral.
+
+Referencia:
+
+> Yang Z, Bielawski JP. Statistical methods for detecting molecular adaptation. Trends Ecol Evol. 2000 Dec 1;15(12):496-503. doi: 10.1016/s0169-5347(00)01994-7. PMID: 11114436; PMCID: PMC7134603.
+
+
+### Comparación M7 frente a M8
+
+M7 utiliza una distribución beta para representar distintos valores de $\omega$ entre cero y uno. Por lo tanto, permite diferentes intensidades de selección purificadora y neutralidad, pero no permite selección positiva.
+
+M8 añade una clase adicional de sitios con:
+${\omega_2} >1 $
+
+La comparación se calculará como:
+
+$$ 2\Delta\ell = 2(\ell_{M8} - \ell_{M7}) 
+$$
+
+También utiliza dos grados de libertad. 
+
+La comparación M7/M8 utiliza una distribución más flexible para representar los valores de ω menores que uno. Por esta razón, M1a/M2a y M7/M8 pueden producir resultados distintos y deberán interpretarse como pruebas relacionadas, pero no equivalentes.
+
+No consideraremos que una de ellas “corrige” automáticamente a la otra.
+
+### Comparación M8a frente a M8
+
+M8a se parece a M8, pero fija la clase adicional en:
+
+${\omega_s} =1 $
+
+En M8, esa clase puede tomar valores mayores que uno.
+
+La sugerencia es usar M8a/M8 como comprobación adicional cuando M7/M8 produzca un resultado significativo o difícil de interpretar. 
+
+Debido a que el valor nulo se encuentra en el límite del espacio de parámetros, esta comparación no utiliza la distribución ordinaria de dos grados de libertad. El manual de PAML recomienda una mezcla 50:50 entre una masa de probabilidad en cero y una distribución  $\chi^{2}$. con un grado de libertad.
+
+
+### Identificación de sitios con BEB
+
+Cuando M1a/M2a o M7/M8 produzcan una prueba global significativa, revisaremos los sitios identificados mediante Bayes Empirical Bayes, o BEB.
+
+BEB calcula la probabilidad posterior de que cada codón pertenezca a la clase con ${\omega_s} > 1 $. A diferencia de NEB, esteincorpora la incertidumbre de los parámetros del modelo. 
+
+PAML recomienda utilizar BEB y no interpretar NEB como resultado principal.
+
+Referencia:
+
+> Ziheng Yang, Wendy S.W. Wong, Rasmus Nielsen, Bayes Empirical Bayes Inference of Amino Acid Sites Under Positive Selection, Molecular Biology and Evolution, Volume 22, Issue 4, April 2005, Pages 1107–1118, https://doi.org/10.1093/molbev/msi097
+
+Registraremos como candidatos a los que cumplan con los siguientes criterios: 
+
+1. sitios con probabilidad BEB mayor o igual a 0.95;
+2. sitios con evidencia más fuerte cuando la probabilidad sea mayor o igual a 0.99.
+
+No interpretaremos los sitios BEB si la comparación global entre los modelos no es significativa.
+
+En el Módulo 6 podremos registrar provisionalmente los sitios BEB cuando la prueba global tenga un p-value significativo sin ajustar. La interpretación final como evidencia dependerá de que la prueba global mantenga su significancia después de la corrección por pruebas múltiples del Módulo 7.
+
+### Control de convergencia
+
+Ejecutaremos los modelos que estimen $\omega$ con mas de un valor inicial, por ejemplo, podemos utilizar valores iniciales de 0.2, 1 y 2.
+
+Para considerar una ejecución como válida revisaremos la verosimilitud final, los mensajes de convergencia, las estimaciones de los parámetros y la ausencia de valores no definidos o soluciones situadas en límites problemáticos. Conservaremos la mayor verosimilitud entre las ejecuciones que hayan convergido correctamente.
+
+En el manual de PAML se menciona que es posible modificar los valores iniciales y tambien se recomienda revisar el progreso de la optimización cuando un modelo presenta dificultades de convergencia.
+
+Referencia:
+
+> Sandra Álvarez-Carretero, Paschalia Kapli, Ziheng Yang, Beginner's Guide on the Use of PAML to Detect Positive Selection, Molecular Biology and Evolution, Volume 40, Issue 4, April 2023, msad041, https://doi.org/10.1093/molbev/msad041
+
+Los modelos nulo y alternativo utilizarán el mismo alineamiento, árbol, código genético y modelo de frecuencias de codón.
+
+Cuando GARD encuentre segmentos con contextos diferentes, aplicaremos los modelos de sitios por segmento siempre que cada región conserve suficiente información. 
+
+Mantendremos un mapa que relacione las posiciones del segmento con la numeración original de la proteína.
+
+**Resultados esperados del Módulo**
+
+Para cada familia registraremos la versión del alineamiento y el árbol utilizados, número de secuencias y codones evaluables, resultados de GARD y los posibles puntos de ruptura, valor de ω de M0, resultados de YN00 para los pares definidos, estadístico, p-value y archivo JSON de BUSTED, verosimilitudes de M1a, M2a, M7, M8 y M8a, estadísticos LRT y sus p-values, sitios candidatos identificados mediante BEB, resultado de las ejecuciones con diferentes valores iniciales, advertencias, fallos y decisiones finales. 
+
+ Se espera que cada familia tenga un resultado documentado para todos los métodos que pueda soportar. No será necesario que los 51 genes pasen por todas las pruebas.
+
+
+# MÓDULO 7. Seguimiento de los analisis y evaluación de robustez
+
+El propósito de este módulo será revisar con mayor detalle los genes, sitios y ramas que presenten evidencia de selección o resultados difíciles de interpretar en el Módulo 6. También evaluaremos si las señales dependen del método, el alineamiento, el árbol, la partición filogenética o el modelo de sustitución utilizado.
+
+Utilizaremos los alineamientos codónicos y los árboles finales preparados después del Módulo 4. Cuando GARD haya identificado regiones compatibles con historias filogenéticas diferentes, también utilizaremos las particiones y los árboles correspondientes, siempre que sean compatibles con el método aplicado.
+
+No será necesario aplicar todos los análisis a todas las familias. La selección de cada método dependerá de la pregunta biológica, la calidad de los datos y la elegibilidad definida en el Módulo 6. Sin embargo, las decisiones deberán establecerse antes de revisar el resultado específico de la prueba, para evitar seleccionar análisis únicamente porque produzcan una señal favorable.
+
+MEME podrá ejecutarse sobre todas las familias aptas para modelos codónicos, ya que representa el análisis principal por sitio. FEL, aBSREL, branch-site y los modelos multihit podrán aplicarse de manera global o dirigida, según el diseño en cada apartado.
+
+
+## 7.1 Análisis de selección por sitio con MEME y FEL
+
+Para este punto se buscaran codones que presenten evidencia de selección diversificante episódica o persistente. 
+
+### MEME
+
+Utilizaremos MEME como método principal para detectar selección positiva a escala de sitio.
+
+MEME permite que la presión selectiva de una posición cambie entre las ramas del árbol; lo que permite la deteccion de un sitio que estuvo bajo selección positiva solamente en una rama o en una parte de la filogenia aunque en el resto de las ramas haya permanecido bajo selección purificadora o neutralidad.
+
+Referencia: 
+
+> Murrell B, Wertheim JO, Moola S, Weighill T, Scheffler K, Kosakovsky Pond SL (2012) Detecting Individual Sites Subject to Episodic Diversifying Selection. PLoS Genet 8(7): e1002764. https://doi.org/10.1371/journal.pgen.1002764
+
+Para cada sitio lo que hace MEME es estimar una tasa sinónima y dos posibles tasas no sinónimas. Una de las tasas representa evolución purificadora o neutral. La segunda puede tomar un valor mayor que la tasa sinónima en una proporción de las ramas. Después compara un modelo que permite selección positiva con otro que no la permite mediante una prueba de razón de verosimilitudes.
+
+(Pregunta clave a responder: ¿Existe evidencia de que un codón estuvo bajo selección diversificante en al menos una parte del árbol?)
+
+Ejecutaremos MEME sobre todas las familias clasificadas como aptas para este método en el Módulo 6. Esto permitirá realizar una búsqueda sistemática de sitios con selección episódica sin elegir las familias después de conocer los resultados de BUSTED o CODEML.
+
+La entrada principal será el alineamiento codónico conservador y su árbol final. Cuando GARD haya identificado particiones que se mantengan después de la revisión, utilizaremos el conjunto particionado con el árbol correspondiente a cada región.
+
+Un comando general para la ejecucion sigue la siguiente estructura:
+
+```bash 
+hyphy meme \
+  --alignment <file.fasta> \
+  --tree <file.tree> \
+  --branches All \
+  --output <file>
+```
+
+HyPhy acepta alineamientos y árboles separados y produce archivos JSON que pueden procesarse automáticamente o visualizarse con HyPhy Vision. 
+
+Para cada sitio registraremos la posición en el alineamiento, el codón, la posición en la proteína de referencia, el valor de p, las tasas estimadas, la proporción de ramas asignada a la clase con posible selección positiva y el estado después de la corrección por pruebas múltiples.
+
+### Fel
+
+FEL estima por separado la tasa sinónima y la tasa no sinónima de cada sitio. Supone que la presión selectiva de un sitio se mantiene a lo largo de todas las ramas analizadas.
+
+> https://hyphy.org/methods/fel/
+
+
+FEL estima para cada sitio una tasa sinónima α y una tasa no sinónima β. La dirección de la señal se interpreta mediante la comparación entre ambas tasas, pero también debe considerarse la prueba estadística:
+
+- habrá evidencia de selección diversificante persistente cuando β>α y la prueba produzca un valor de p compatible con el criterio definido
+- habrá evidencia de selección purificadora persistente cuando β<α y la diferencia tenga respaldo estadístico
+
+cuando la prueba no sea significativa no concluiremos que el sitio se encuentra bajo selección positiva o purificadora.
+
+Es por esta razón que FEL resulta útil para distinguir sitios con una señal mantenida en gran parte del árbol de sitios donde la selección ocurrió solo en algunas ramas. MEME y FEL son complementarios, pero no deben considerarse réplicas independientes de la misma prueba.
+
+Para mantener el pipeline eficiente y efectivo, se propone usar FEL en los siguientes casos:
+
+- genes con sitios identificados por MEME o BEB
+- genes con resultados discordantes entre BUSTED y CODEML
+- familias prioritarias por su función biológica
+- genes donde también queramos identificar sitios bajo selección purificadora.
+
+Un comando general para la ejecucion seria como el mostrado a continuacion:
+
+```bash
+hyphy fel \
+  --alignment <file.fasta>\
+  --tree <file.tree> \
+  --branches All \
+  --output <file_name>.json
+
+```
+
+Si FEL se aplica únicamente a genes elegidos después de revisar los resultados de MEME, los $\p-values$ obtenidos se usaran como analsis de seguimiento.
+
+Si queremos realizar una comparación general de FEL entre genes, tendremos que ejecutarlo sobre todas las familias aptas y aplicar la corrección por pruebas múltiples a todos los sitios evaluados por este método.
+
+> Murrell B, Wertheim JO, Moola S, Weighill T, Scheffler K, Kosakovsky Pond SL. Detecting individual sites subject to episodic diversifying selection. PLoS Genet. 2012;8(7):e1002764. doi: 10.1371/journal.pgen.1002764. Epub 2012 Jul 12. PMID: 22807683; PMCID: PMC3395634
+
+>Kosakovsky Pond, S. L., & Frost, S. D. (2005). Not so different after all: a comparison of methods for detecting amino acid sites under selection. Molecular biology and evolution, 22(5), 1208–1222. https://doi.org/10.1093/molbev/msi105
+
+### Interpretación 
+
+Un sitio identificado por MEME, pero no por FEL, será compatible con una señal episódica limitada a una parte de las ramas. Sin embargo, la ausencia de señal en FEL no demuestra que la selección haya ocurrido exclusivamente de esa manera, porque los métodos tienen supuestos y potencia diferentes.
+
+Un sitio identificado por ambos métodos presenta evidencia bajo un modelo episódico y bajo un modelo de efecto persistente. Esto no convierte ambos resultados en pruebas independientes, ya que utilizan el mismo alineamiento, árbol y sustituciones.
+
+Un sitio identificado por FEL bajo selección purificadora no se considerará automáticamente un sitio sin cambios o conservado en el sentido del Módulo 5. Un sitio puede presentar sustituciones observadas y al mismo tiempo, mostrar una tasa no sinónima menor que la sinónima.
+
+Estas comparaciones ayudan a interpretar, pero no prueban por sí solas la función del residuo. Después tendremos que revisar si el sitio se encuentra en un dominio, motivo o región estructural importante.
+
+
+## 7.2 Análisis de selección en ramas justificadas
+
+Los análisis de ramas se realizarán únicamente cuando exista una hipótesis biológica o evolutiva clara.
+
+Las hipótesis sobre ramas candidatas podrán surgir de las relaciones observadas en el Módulo 2, pero se marcarán sobre el árbol final preparado después del Módulo 4. Antes de ejecutar las pruebas elaboraremos una tabla con la familia, la rama foreground, las especies descendientes, el soporte, la hipótesis biológica y el método que se aplicará.
+
+Algunos ejemplos serían el origen de una copia después de una duplicación, el origen de un clado taxonómico, una rama asociada con un posible cambio funcional o la separación de dos subfamilias.
+
+
+### aBSREL
+
+Utilizaremos aBSREL como método principal para las pruebas por rama.
+
+aBSREL evalúa si una proporción de los sitios de una rama experimentó selección positiva episódica. 
+
+El método permite que distintas ramas tengan diferente número de clases de ω, en lugar de imponer la misma complejidad a todo el árbol. Un resultado significativo indica que, para la rama evaluada, un modelo que permite una clase de sitios con ω>1 explica mejor los datos que el modelo nulo. No implica que toda la rama ni todos los sitios hayan estado bajo selección positiva.
+
+Utilizaremos preferentemente el modo dirigido, donde indicaremos antes del análisis qué rama o conjunto de ramas queremos probar.
+
+Un comando general que se usara es algo como: 
+
+```bash
+hyphy absrel \
+  --alignment <file.fasta> \
+  --tree <file.tree> \
+  --branches Foreground \
+  --output <file.json>
+```
+
+Para utilizarlo necesitaremos añadir una etiqueta al árbol Newick que identifique las ramas de interés. 
+
+HyPhy tiene herramientas para etiquetar árboles y permite seleccionar ramas concretas desde la línea de comandos.
+
+aBSREL también puede probar todas las ramas del árbol de manera exploratoria. Este modo es válido, pero puede perder potencia porque realiza múltiples pruebas y aplica una corrección de Holm-Bonferroni dentro del árbol. 
+
+Por esta razón, el modo dirigido será preferible cuando exista una hipótesis previa, mientras que el análisis de todas las ramas se presentará por separado como exploratorio.
+
+> https://hyphy.org/methods/absrel
+
+> Smith, M. D., Wertheim, J. O., Weaver, S., Murrell, B., Scheffler, K., & Kosakovsky Pond, S. L. (2015). Less is more: an adaptive branch-site random effects model for efficient detection of episodic diversifying selection. Molecular biology and evolution, 32(5), 1342–1353. https://doi.org/10.1093/molbev/msv022
+
+
+### Modelo branch-site de CODEML
+
+Podemos emplear el modelo branch-site A de CODEML como análisis complementario en genes prioritarios y con una rama foreground bien justificada.
+
+Este modelo permite que algunos sitios estén bajo selección positiva únicamente en las ramas marcadas como foreground. 
+
+El modelo alternativo permite una clase con $\omega > 1$, mientras que el modelo nulo fija esa clase en $\omega = 1$. 
+
+La comparación se realiza mediante una prueba de razón de verosimilitudes.
+
+Algunos ejemplos de configuraciones generales para esta herramienta que podemos emplear son:
+
+```bash 
+#Configuracion general 
+model = 2
+NSsites = 2
+
+#modelo alternativo
+fix_omega = 0
+omega = 1.5
+
+#modelo nulo
+fix_omega = 1
+omega = 1
+```
+
+La rama foreground se marcará en el árbol con la notación correspondiente de CODEML. 
+
+La prueba utiliza una distribución nula formada por una mezcla 50:50 entre una masa de probabilidad en cero y una distribución $χ^2$ con un grado de libertad.
+
+Cuando la comparación global sea significativa, registraremos provisionalmente los sitios identificados mediante BEB. Su interpretación final como candidatos con respaldo requerirá que la prueba de rama mantenga su significancia después de la corrección por pruebas múltiples.
+
+El modelo branch-site depende de que la rama foreground esté correctamente definida. 
+
+Para una rama terminal podremos identificarla en un árbol no enraizado. 
+
+Para estudiar el origen de un clado o una rama interna puede ser necesario contar con una raíz biológicamente justificada. 
+
+No utilizaremos midpoint rooting para establecer esa hipótesis. 
+
+La guía de PAML menciona que la raíz puede volverse relevante cuando el modelo asigna procesos diferentes a las ramas situadas a ambos lados de ella.
+ 
+Como punto importante no ejecutaremos ambos métodos sobre todas las ramas, aBSREL será la prueba principal porque permite adaptar la complejidad del modelo a cada rama.
+
+El modelo branch-site de CODEML se reservará para ramas prioritarias, especialmente cuando queramos identificar codones candidatos mediante BEB.
+
+Cuando ambos produzcan evidencia, la señal tendrá respaldo bajo dos modelos diferentes. Sin embargo, no los describiremos como pruebas completamente independientes, porque utilizan el mismo alineamiento, árbol y sustituciones observadas. 
+
+> Jianzhi Zhang, Rasmus Nielsen, Ziheng Yang, Evaluation of an Improved Branch-Site Likelihood Method for Detecting Positive Selection at the Molecular Level, Molecular Biology and Evolution, Volume 22, Issue 12, December 2005, Pages 2472–2479, https://doi.org/10.1093/molbev/msi237
+
+> Sandra Álvarez-Carretero, Paschalia Kapli, Ziheng Yang, Beginner's Guide on the Use of PAML to Detect Positive Selection, Molecular Biology and Evolution, Volume 40, Issue 4, April 2023, msad041, https://doi.org/10.1093/molbev/msad041
+
+
+## 7.3 Evaluación de mutaciones multinucleotídicas
+
+La mayoría de los modelos codónicos tradicionales asume que cada evento de sustitución cambia un solo nucleótido del codón. Sin embargo, un codón puede experimentar un cambio simultáneo de dos o tres nucleótidos.
+
+Estas sustituciones multinucleotídicas o multihit pueden parecer varios cambios no sinónimos acumulados en una rama corta. 
+
+Los modelos que solo permiten cambios de un nucleótido pueden interpretar esa observación como selección positiva intensa. 
+
+Simulaciones han mostrado que este problema puede aumentar los falsos positivos.
+
+No aplicaremos esta evaluación obligatoriamente a los 51 genes. La utilizaremos cuando BUSTED, aBSREL o branch-site produzcan una señal fuerte, la señal dependa de una rama corta o distintos métodos produzcan resultados incompatibles.
+
+> Venkat, A., Hahn, M. W., & Thornton, J. W. (2018). Multinucleotide mutations cause false inferences of lineage-specific positive selection. Nature ecology & evolution, 2(8), 1280–1288. https://doi.org/10.1038/s41559-018-0584-5
+
+> Alexander G Lucaci, Jordan D Zehr, David Enard, Joseph W Thornton, Sergei L Kosakovsky Pond, Evolutionary Shortcuts via Multinucleotide Substitutions and Their Impact on Natural Selection Analyses, Molecular Biology and Evolution, Volume 40, Issue 7, July 2023, msad150, https://doi.org/10.1093/molbev/msad150
+
+### FitMultiModel
+
+Utilizaremos FitMultiModel (FMM dentro de HyPhy).
+
+FMM compara modelos que permiten únicamente cambios de un nucleótido con modelos que permiten cambios instantáneos de dos o tres nucleótidos. 
+
+Utiliza pruebas de razón de verosimilitudes para evaluar si los modelos multihit explican mejor el alineamiento. 
+
+FitMultiModel evaluará principalmente si un modelo que permite cambios multinucleotídicos mejora el ajuste global del conjunto y estimará hasta qué punto estos eventos contribuyen a los datos. 
+
+La entrada será el alineamiento codónico y el árbol utilizados en las pruebas de selección, el ejempli de comando a ocupar para la ejecución es:
+
+```bash 
+hyphy fmm \
+  --alignment <file.fasta> \
+  --tree <file.tree> \
+  --output .json
+```
+
+FMM funciona mejor cuando el alineamiento y el árbol contienen suficiente divergencia. En árboles muy cortos puede tener poca capacidad para distinguir entre modelos con uno o varios cambios instantáneos.
+
+Cuando FMM encuentre evidencia de sustituciones multinucleotídicas, revisaremos si los codones implicados coinciden con los sitios identificados por MEME, BEB o branch-site.
+
+Para los genes con una señal a escala de familia también podremos utilizar BUSTED-MH, una extensión de BUSTED que permite sustituciones instantáneas múltiples. HyPhy incluye actualmente esta variante entre sus análisis disponibles.
+
+Cuando una señal dependa de uno o pocos codones con evidencia multihit, utilizaremos primero un modelo que permita este tipo de sustituciones. Como evaluación secundaria podremos repetir el análisis después de retirar temporalmente esos codones.
+
+No eliminaremos los codones del resultado principal sin documentarlo, porque el cambio multinucleotídico también puede ser un evento biológico real.
+
+Una señal que desaparezca al permitir o retirar los cambios multinucleotídicos se clasificará como sensible al modelo de sustitución.
+
+
+> Lucaci AG, Wisotsky SR, Shank SD, Weaver S, Kosakovsky Pond SL (2021) Extra base hits: Widespread empirical support for instantaneous multiple-nucleotide changes. PLoS ONE 16(3): e0248337. https://doi.org/10.1371/journal.pone.0248337
+> https://hyphy.org/methods/other/FitMultiModel/
+
+
+## 7.4 Sensibilidad al alineamiento
+
+Las pruebas de selección dependen del alineamiento y de la filogenia utilizados. Es por esto que los resultados principales deberán someterse a análisis de sensibilidad.
+
+**Alineamiento completo y conservador**
+
+La versión conservadora del Módulo 4 seguirá siendo la entrada principal.
+
+Para los genes con resultados significativos o con interés particular, repetiremos las pruebas más importantes sobre la versión completa. 
+
+Los errores de alineamiento pueden colocar codones no homólogos en una misma columna y producir un exceso aparente de sustituciones no sinónimas. Diversos estudios han mostrado que estos errores pueden aumentar los falsos positivos en pruebas de selección.
+
+Interpretaremos los resultados de la siguiente manera:
+
+- si la señal aparece en ambas versiones tendrá mayor respaldo
+- si aparece solamente en la versión completa y coincide con una región ambigua se considerará dependiente del alineamiento 
+- si aparece solamente en la versión conservadora revisaremos si el filtrado cambió la información o la topología
+- si el sitio candidato se encuentra junto a una inserción o región terminal lo revisaremos manualmente.
+
+No esperaremos que los p-values sean idénticos. 
+
+Compararemos los sitios mediante el mapa de posiciones del Módulo 4. No asumiremos que el mismo número de columna representa el mismo residuo en las dos versiones.
+
+> Gregory Jordan, Nick Goldman, The Effects of Alignment Error and Alignment Filtering on the Sitewise Detection of Positive Selection, Molecular Biology and Evolution, Volume 29, Issue 4, April 2012, Pages 1125–1139, https://doi.org/10.1093/molbev/msr272
+
+> William Fletcher, Ziheng Yang, The Effect of Insertions, Deletions, and Alignment Errors on the Branch-Site Test of Positive Selection, Molecular Biology and Evolution, Volume 27, Issue 10, October 2010, Pages 2257–2267, https://doi.org/10.1093/molbev/msq115
+
+
+**Particiones de GARD**
+
+Cuando GARD haya detectado cambios en la historia filogenética repetiremos las pruebas utilizando las particiones y árboles correspondientes.
+
+- Una señal que se mantenga en el segmento donde se encuentra el sitio tendrá mayor respaldo. 
+
+- Una señal que desaparezca al considerar las particiones se clasificará como sensible a la partición o a la heterogeneidad filogenética. 
+
+También conservaremos un mapa que relacione la numeración de cada segmento con la proteína original.
+
+**Sensibilidad al árbol**
+
+Los modelos utilizan el árbol como parte de la hipótesis. Una topología incorrecta puede cambiar las sustituciones asignadas a ramas y afectar los sitios o linajes identificados. Se ha demostrado que la elección del árbol génico puede modificar los resultados de pruebas de selección.
+
+Cuando la rama de interés tenga poco soporte o existan varias topologías posibles, repetiremos el análisis con una topología alternativa bien justificada.
+
+La topología alternativa deberá definirse a partir del soporte filogenético, referencias externas o una hipótesis biológica previa. No seleccionaremos entre varias topologías según cuál mantenga la señal de selección.
+
+No sustituiremos automáticamente el árbol génico por el árbol de especies 18S, la topología alternativa deberá representar una hipótesis razonable para esa familia.
+
+También podemos retirar temporalmente una secuencia con una rama extremadamente larga y comprobar si determina el resultado (Esto no implicará excluirla de manera definitiva). 
+
+> Diekmann, Y., & Pereira-Leal, J. B. (2016). Gene Tree Affects Inference of Sites Under Selection by the Branch-Site Test of Positive Selection. Evolutionary bioinformatics online, 11(Suppl 2), 11–17. https://doi.org/10.4137/EBO.S30902
+
+
+## 7.5 Corrección por pruebas múltiples
+
+La corrección por pruebas múltiples debe formar parte del diseño desde el inicio del módulo.
+
+La razón de esto es que cuando realizamos muchas pruebas, algunos p-values pequeños pueden aparecer por azar. 
+
+El procedimiento de Benjamini-Hochberg controla la tasa esperada de falsos descubrimientos entre los resultados que declaramos significativos.
+
+> Yoav Benjamini, Yosef Hochberg, Controlling the False Discovery Rate: A Practical and Powerful Approach to Multiple Testing, Journal of the Royal Statistical Society: Series B (Methodological), Volume 57, Issue 1, January 1995, Pages 289–300, https://doi.org/10.1111/j.2517-6161.1995.tb02031.x
+
+No juntaremos todos los p-values de métodos diferentes en una sola corrección, cada grupo de pruebas responderá una pregunta distinta.
+
+Definiremos las siguientes familias de hipótesis:
+
+- p-values de BUSTED entre todas las familias evaluadas
+- Comparaciones M1a/M2a entre genes
+- Comparaciones M7/M8 entre genes
+- Sitios evaluados mediante MEME
+- Sitios evaluados mediante FEL.
+- Ramas evaluadas mediante aBSREL dirigido
+- Comparaciones branch-site de CODEML
+- Resultados exploratorios de aBSREL sobre todas las ramas, que se mantendrán separados de las hipótesis dirigidas.
+- Pruebas de modelos multihit cuando se realicen en varios genes
+
+Para MEME y FEL la unidad de prueba será el sitio dentro de un gen. Como análisis principal podremos reunir todos los sitios evaluados por el mismo método y aplicar Benjamini-Hochberg al conjunto completo genes-sitios.
+
+Las conclusiones principales deberan utilizar la corrección global por método y no por gen. 
+
+Para BUSTED y los modelos de CODEML, donde cada gen representa una hipótesis, aplicaremos la corrección por separado a cada tipo de prueba.
+
+Para las pruebas dirigidas por rama deberemos juntar todas las hipótesis definidas previamente y ajustar los p-values. Los resultados exploratorios de aBSREL sobre todas las ramas se mantendrán separados porque el programa ya aplica una corrección de Holm dentro de cada árbol.
+
+> https://hyphy.org/methods/absrel/
+
+En todos los casos deberemos reportar el p-value original, el p-value ajustado, el numero de pruebas incluidas en la correccion y el criterio utilizado para definir cada familia de hipotesis. 
+
+Utilizaremos $q ≤ 0.05$  como criterio de significancia. 
+Recordando que el q-value es el p-value ajustado que controla para el FDR (false discovery rate) cuando se estan ejecutando multiples pruebas al mismo tiempo 
+
+Las probabilidades BEB de CODEML no son p-values, por lo que no se incluirán directamente en Benjamini-Hochberg. Primero se necesitaran una comparación global significativa entre modelos y después se interpretan los sitios BEB como candidatos.
+
+De igual manera, los cocientes de evidencia por sitio producidos por BUSTED son medidas descriptivas y no deben mezclarse con los p-values de MEME o FEL.
+
+
+## 7.6 Clasificación de los resultados
+
+La clasificación se realizará por separado para señales a escala de gen, sitio y rama. No combinaremos automáticamente la evidencia de estos tres niveles en una sola categoría, los criterios que podremos emplear son: 
+
+
+1. Una señal tendrá evidencia robusta cuando supere la corrección por pruebas múltiples, no dependa de una región ambigua, se mantenga al considerar GARD y no esté explicada principalmente por sustituciones multinucleotídicas.
+
+2.  señal será dependiente del método cuando aparezca solo bajo un modelo concreto, pero el alineamiento y los datos sean correctos. 
+
+3. Una señal será dependiente del alineamiento o del árbol cuando cambie al utilizar la versión conservadora, una partición de GARD o una topología alternativa. 
+
+4. Una señal será exploratoria cuando tenga un p-value pequeño pero no supere la corrección por pruebas múltiples o no tenga suficiente información para una conclusión concreta. 
+
+
+### Resultados
+
+De manera general, lo que se esperaria generar en este módulo es lo siguiente:
+
+- Para cada familia los archivos JSON generados por HyPhy, los archivos de CODEML de las pruebas branch-site y un registro de las versiones de alineamiento y árbol utilizadas.
+
+- Resultado de MEME, FEL, aBSREL o branch-site, la evaluación multihit, la sensibilidad al alineamiento, la sensibilidad a GARD, los p-values y q-values y la clasificación final.
+
+- Para los sitios candidatos se podra generar  una tabla con el gen, la posición en el alineamiento, la posición en la proteína de referencia, el método que lo identificó, el estado de conservación del Módulo 5, el dominio y el resultado de las pruebas de sensibilidad.
+
+- Para las ramas candidatas debemos registrar la hipótesis previa, las especies incluidas, el soporte de la rama, el método utilizado y la evidencia obtenida.
+
+
+# MÓDULO 8. Integración e interpretación de los resultados 
+
+En este módulo reuniremos los resultados generados en los módulos anteriores, el  objetivo es obtener una interpretación final para cada gen o familia, comparar los resultados entre genes y complejos meióticos y generar las tablas y figuras que se utilizarán en el artículo.
+
+La unidad de análisis será la familia o subfamilia final definida en el Módulo 2. Si un conjunto original se dividió en varios parálogos, cada uno tendrá un resultado independiente.
+
+## 8.1 Integración de resultados por gen
+
+Para cada familia reuniremos en una sola tabla los datos principales de los módulos anteriores. La tabla tendrá una fila por unidad de análisis, es decir, puede tener a un gen, una familia de ortólogos o un grupo de parálogos analizados por separado.
+
+Primero registraremos la información general, como el complejo meiótico, familia, grupo taxonómico, número de especies, número de secuencias, copias génicas incluidas y proteínas de referencia usadas.
+
+Después incorporaremos la información de calidad de los datos, como el número de CDS recuperados, longitud del alineamiento, proporción de gaps, cobertura, número de codones evaluables, versión del alineamiento y posibles particiones de GARD.
+
+De igual manera agregaremos las métricas del Módulo 5, es decir,  identidad proteica, distancia patrística, sitios invariantes, sitios variables y variabilidad aminoacídica.
+
+Finalmente, integraremos los resultados de selección:
+
+- ω promedio de M0
+- resultados de YN00 para los pares definidos
+- BUSTED
+- M1a frente a M2a
+- M7 frente a M8
+- M8a frente a M8 (cuando corresponda)
+- sitios identificados mediante BEB, MEME o FEL
+- ramas identificadas mediante aBSREL o branch-site
+- evaluación de sustituciones multinucleotídicas
+- p y q values
+- clasificación de resultados
+
+Para evitar una sola tabla demasiado densa, generaremos cuatro tablas relacionadas mediante un identificador único:
+
+- tabla general con una fila por familia o unidad de análisis
+- tabla de sitios candidatos
+- tabla de ramas candidatas
+- tabla con las comparaciones por pares definidas para YN00
+
+Las tres tablas compartirán un identificador único, como "complejo_gen_familia_conjuntotaxonomico"
+
+
+### YN00
+
+YN00 produce estimaciones de $d_{N}$ y $d_{S}$ y $\omega$ para comparaciones entre pares de secuencias; por lo tanto, sus resultados no representan directamente un único valor del gen. 
+
+No promediaremos todos los valores de YN00 para producir un ω del gen porque los pares no son independientes y cada familia puede contener diferentes especies y niveles de divergencia.
+
+Para representar un valor general por familia utilizaremos el ω estimado mediante CODEML M0. Como se menciono previamente, este valor describe la presión selectiva promedio, pero tiene poca capacidad para detectar selección concentrada en algunos sitios o ramas.
+
+Los resultados de YN00 se describiran en una tabla por pares y se utilizarán para comparaciones taxonómicas previamente definidas.
+
+Los resultados se integrarán respetando su escala. BUSTED y los modelos de sitios producirán conclusiones a escala de familia; MEME, FEL y BEB producirán resultados por codón; aBSREL y branch-site producirán resultados por rama. No convertiremos automáticamente señales de estas escalas en una sola variable binaria de seleccion. 
+
+## 8.2 Comparación entre genes y complejos
+
+Primero compararemos los genes de manera individual, después reuniremos los resultados por complejo meiótico.
+
+Cada gen representará una observación, no utilizaremos cada sitio, especie o par de YN00 como una observación independiente al comparar complejos.
+
+Cuando varias subfamilias procedan de un mismo gen original, registraremos esta relación y no asumiremos automáticamente que representan observaciones completamente independientes.
+
+Esto evita que los genes más largos, los que tienen más especies o los que producen más comparaciones por pares tengan un peso mayor en el resumen.
+
+Para cada gen podremos utilizar las métricas calculadas previamente: identidad proteica mediana, distancia patrística mediana, proporción de sitios variables, variabilidad aminoacídica mediana, ω de M0, resultado de BUSTED, resultado de los modelos de sitios, número de sitios robustos, número de ramas con evidencia, clasificación final.
+
+Las comparaciones entre complejos deberán mostrar los resultados individuales de cada gen. También podremos presentar medianas e intervalos intercuartílicos cuando un complejo contenga suficientes genes.
+
+Cuando varias subfamilias procedan de un mismo gen original, registraremos esta relación y no asumiremos automáticamente que representan observaciones completamente independientes.
+
+Es importante que antes de hacer la interpretacion de un complejo revisemos cuántos genes contiene, qué especies incluye cada familia, si los conjuntos taxonómicos son comparables, ué longitud tienen los alineamientos y cuántos genes llegaron hasta los modelos codónicos.
+
+En los complejos que contienen un solo gen, el resultado representará únicamente a ese gen, es decir, no podremos considerarlo una tendencia general del complejo.
+
+### Comparación taxonómica
+
+Una familia analizada en angiospermas no debe compararse directamente con otra que incluya plantas, algas y hongos sin registrar esa diferencia.
+
+Para esta parte se podran presentar dos niviles distintos de análisis:
+
+- resumen descriptivo con el conjunto taxonómico final de cada familia
+- comparación de sensibilidad utilizando un subconjunto común de especies (nos ayudara a distinguir si una diferencia entre genes depende del muestreo taxonomico)
+
+Se podra generar un PCA para observar si los genes que tengan perfiles similares ocupan regiones cercanas en un espacio variado; el agrupamiento que observemos por complejo podra servir para visualizar si los complejos tienen tasas evolutivas distintas, evidenemente esto sera solo un análisis exploratorio (Para este punto tendremos que estandarizar variables porque la mayoria tiene escalas distintas y también retirar variables que sean redundantes)
+
+## 8.4 Generación de figuras y tablas finales (REVISIÓN: AUN NO ESTOY SEGURA DE CUALES SERIAN LAS MEJORES OPCIONES PARA PRESENTAR LOS RESULTADOS)
+
+Las figuras que se generen deberán responder preguntas concretas y no repetir la misma información con distintos formatos, para el proyecto proponemos los siguientes tipos principales de figuras: 
+
+1. Figura 1. Resumen del pipeline y conjuntos analizados
+
+Esta figura mostrará el flujo desde la matriz y las proteínas originales hasta los genes que llegaron a las pruebas de selección. Esta nos ayudara a mostrar que no todos los genes pasaron de manera automática por todos los análisis.
+
+2. Figura 2. Árboles génicos anotados
+
+Utilizaremos los arboles finales del Módulo 2 y solo mostraremos en el artículo las familias más informativas. El resto de los árboles se incluirá como material suplementario.
+
+Relación entre ${d_N} y {d_S}$
+
+Una gráfica de dispersión puede utilizarse para mostrar las comparaciones de YN00 previamente definidas.
+
+Resultados de LRT
+
+Los resultados de M1a/M2a y M7/M8 pueden presentarse en un gráfico de puntos 
+
+
+| Tipo de análisis                        |                    Módulo | Resultado                                                      |
+| --------------------------------------- | ------------------------: | -------------------------------------------------------------- |
+| Identidad proteica                      |                         5 | Similitud observada entre pares de proteínas                   |
+| Distancia patrística                    |                         5 | Divergencia estimada a partir del árbol proteico               |
+| Longitud, cobertura y gaps              |                         5 | Calidad y cantidad de información del alineamiento             |
+| Sitios invariantes y variables          |                         5 | Conservación general de cada familia                           |
+| Variabilidad aminoacídica por posición  |                         5 | Perfil de conservación y variación a lo largo de la proteína   |
+| (d_N), (d_S) y (\omega) por pares       |                   6, YN00 | Divergencia codónica entre pares                               |
+| (\omega) promedio por familia           |              6, CODEML M0 | Presión selectiva promedio del gen                             |
+| Selección a escala de gen               |                 6, BUSTED | Evidencia de selección en algún sitio y alguna rama            |
+| Selección mantenida entre sitios        | 6, CODEML M1a/M2a y M7/M8 | Evidencia de una clase de codones con (\omega>1)               |
+| Sitios candidatos con BEB               |                         6 | Codones asociados con la clase de selección positiva           |
+| Recombinción o cambios de historia      |                   6, GARD | Evaluación previa de heterogeneidad filogenética               |
+| Selección episódica por sitio           |                   7, MEME | Sitios seleccionados solo en algunas ramas                     |
+| Selección persistente por sitio         |                    7, FEL | Sitios con presión selectiva semejante a lo largo del árbol    |
+| Selección episódica por rama            |                 7, aBSREL | Ramas con evidencia de selección en una parte de los sitios    |
+| Selección branch-site                   |                 7, CODEML | Selección en sitios concretos de una rama previamente definida |
+| Sustituciones multinucleotídicas        |          7, FMM/BUSTED-MH | Evaluación de posibles falsos positivos por cambios multihit   |
+| Sensibilidad al alineamiento y al árbol |                         7 | Robustez de las señales principales                            |
+| Corrección por pruebas múltiples        |                         7 | Control de falsos positivos.                                   |
+
+Tabla 1. Resumen general de los analisis que se proponen llevar a cabo, el modulo en que se tiene previsto que se realicen y el resultado que se generara. 
