@@ -1,11 +1,17 @@
 ---
-title: "PROYECTO:"
-subtitle: "PIPELINE GENERAL"
+title: "Evolución comparativa de complejos meióticos en plantas y hongos"
+subtitle: "Estrategia metodológica"
+author:
+  - name: "Alondra Márquez"
+  - name: "Brenda Gómez"
 lang: es
 format:
   html:
     toc: true
+    toc-title: "Contenido"
+    toc-location: right
     toc-depth: 2
+    toc-expand: true
     number-sections: false
 ---
 
